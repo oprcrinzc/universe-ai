@@ -1,0 +1,19 @@
+# Binaries
+gravitysim
+gravitysim.exe
+*.exe
+*.dll
+*.so
+*.dylib
+
+# User runtime screenshots
+screenshots/
+temp_frames/
+
+# OS / Editor files
+.DS_Store
+Thumbs.db
+*.swp
+*~
+.vscode/
+.idea/
