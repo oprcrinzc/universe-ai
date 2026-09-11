@@ -1,0 +1,99 @@
+{
+  "version": "1.0",
+  "name": "Stable Figure-8 Three-Body Choreography",
+  "description": "Three equal masses tracing a single continuous figure-eight planar trajectory",
+  "timestamp": 1789063386,
+  "config": {
+    "g": 1,
+    "time_scale": 1,
+    "sub_steps": 8,
+    "softening": 0.1,
+    "collision_mode": "bounce",
+    "use_barnes_hut": false,
+    "barnes_hut_theta": 0.7,
+    "enable_relativity": false,
+    "speed_of_light": 200,
+    "enable_roche_limit": false,
+    "show_textures": true
+  },
+  "bodies": [
+    {
+      "id": 1,
+      "name": "Choreography Star Alpha",
+      "position": [
+        24.250109,
+        0,
+        -6.077188
+      ],
+      "velocity": [
+        -2.3310266,
+        0,
+        -2.1618288
+      ],
+      "mass": 2500,
+      "radius": 2.2,
+      "color": [
+        255,
+        200,
+        50,
+        255
+      ],
+      "is_stationary": false,
+      "is_star": true,
+      "texture_type": "sun",
+      "rotation_speed": 0
+    },
+    {
+      "id": 2,
+      "name": "Choreography Star Beta",
+      "position": [
+        -24.250109,
+        0,
+        6.077188
+      ],
+      "velocity": [
+        -2.3310266,
+        0,
+        -2.1618288
+      ],
+      "mass": 2500,
+      "radius": 2.2,
+      "color": [
+        100,
+        220,
+        255,
+        255
+      ],
+      "is_stationary": false,
+      "is_star": true,
+      "texture_type": "sun",
+      "rotation_speed": 0
+    },
+    {
+      "id": 3,
+      "name": "Choreography Star Gamma",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        4.662053,
+        0,
+        4.3236575
+      ],
+      "mass": 2500,
+      "radius": 2.2,
+      "color": [
+        255,
+        100,
+        200,
+        255
+      ],
+      "is_stationary": false,
+      "is_star": true,
+      "texture_type": "sun",
+      "rotation_speed": 0
+    }
+  ]
+}

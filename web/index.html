@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gravity Mass Simulator 3D - WebAssembly Edition</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Three.js for hardware-accelerated 3D WebGL rendering -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="wasm_exec.js"></script>
+</head>
+<body>
+    <!-- Top Control Bar -->
+    <header id="top-bar">
+        <div class="logo">
+            <span class="planet-icon">🪐</span>
+            <span class="title">GRAVITY SIM 3D</span>
+            <span class="badge">WASM 144 FPS</span>
+        </div>
+
+        <div class="sim-controls">
+            <button id="btn-play-pause" class="btn primary">⏸ PAUSE</button>
+            <div class="speed-control">
+                <span class="label">Speed:</span>
+                <button id="btn-speed-down" class="btn-step" title="Decrease speed constantly (Hotkey: Comma / <)">◀</button>
+                <select id="select-speed">
+                    <option value="0.1">0.1x</option>
+                    <option value="0.2">0.2x</option>
+                    <option value="0.5">0.5x</option>
+                    <option value="0.8">0.8x</option>
+                    <option value="1.0" selected>1.0x</option>
+                    <option value="1.5">1.5x</option>
+                    <option value="2.0">2.0x</option>
+                    <option value="2.5">2.5x</option>
+                    <option value="3.0">3.0x</option>
+                    <option value="4.0">4.0x</option>
+                    <option value="5.0">5.0x</option>
+                    <option value="10.0">10.0x</option>
+                </select>
+                <button id="btn-speed-up" class="btn-step" title="Increase speed constantly (Hotkey: Period / >)">▶</button>
+                <button id="btn-speed-step" class="btn-step" title="Cycle Step Size: ±0.1x, ±0.5x, ±2.0x">±0.5</button>
+                <button id="btn-speed-reset" class="btn-step" title="Reset Speed to 1.0x (Hotkey: \)">1.0x</button>
+            </div>
+        </div>
+
+        <div class="preset-selector">
+            <span class="label">Preset:</span>
+            <select id="select-preset">
+                <optgroup label="Classic Presets">
+                    <option value="0" selected>1. Solar System (9 Bodies)</option>
+                    <option value="1">2. Grand Solar System (Asteroids & Moons)</option>
+                    <option value="2">3. Binary Stars & Planets</option>
+                    <option value="3">4. 3-Body Problem (Chaotic)</option>
+                    <option value="4">5. Lagrange Trojans (L4/L5 Swarms)</option>
+                    <option value="5">6. Galaxy Collision (Tidal Tails)</option>
+                    <option value="6">7. Pulsar Accretion Binary</option>
+                    <option value="7">8. Milky Way Cluster (650 Stars)</option>
+                    <option value="8">9. Globular Cluster (Core Collapse)</option>
+                    <option value="9">10. TRAPPIST-1 (7 Resonant Planets)</option>
+                    <option value="10">11. 5-Body Choreography</option>
+                    <option value="11">12. Relativistic Rosette (1PN GR)</option>
+                    <option value="12">13. Roche Limit Tidal Disruption</option>
+                    <option value="13">14. Empty Sandbox</option>
+                </optgroup>
+                <optgroup label="🌌 Gigantic Cosmic Swarms (1K - 10K)">
+                    <option value="14">15. Milky Way Extreme (10,001 Stars)</option>
+                    <option value="15">16. Asteroid Belt & Jovian (2,010 Bodies)</option>
+                    <option value="16">17. Colliding Galaxies (5,002 Stars)</option>
+                    <option value="17">18. Gargantua Singularity (3,001 Bodies)</option>
+                    <option value="18">19. Gravitational Collapse (1,600 Particles into Sphere)</option>
+                </optgroup>
+                <optgroup label="🔭 Astronomical Exact Scale">
+                    <option value="19">20. Real Scale Solar System (AU Scale, Kirkwood, Halley, Voyager)</option>
+                </optgroup>
+            </select>
+            <button id="btn-load-preset" class="btn">LOAD</button>
+        </div>
+
+        <div class="actions">
+            <button id="btn-lock-near" class="btn" title="Lock to Nearest Object (N)">🎯 LOCK NEAR</button>
+            <button id="btn-reset-cam" class="btn" title="Reset Camera View (R)">🎥 RESET CAM</button>
+            <button id="btn-help" class="btn" title="Help & Hotkeys">❓</button>
+        </div>
+    </header>
+
+    <!-- 3D Canvas Container -->
+    <div id="canvas-container"></div>
+
+    <!-- HUD Telemetry Overlay -->
+    <div id="hud-overlay">
+        <div class="hud-item"><span class="hud-label">FPS:</span> <span id="hud-fps" class="hud-val green">144</span></div>
+        <div class="hud-item"><span class="hud-label">BODIES:</span> <span id="hud-bodies" class="hud-val cyan">10</span></div>
+        <div class="hud-item"><span class="hud-label">PHYSICS:</span> <span id="hud-phys-time" class="hud-val">0.4 ms</span></div>
+        <div class="hud-item"><span class="hud-label">ENGINE:</span> <span id="hud-engine" class="hud-val purple">Barnes-Hut O(N log N)</span></div>
+        <div class="hud-item"><span class="hud-label">MERGES:</span> <span id="hud-merges" class="hud-val">0</span></div>
+    </div>
+
+    <!-- Right Inspector Panel -->
+    <aside id="inspector-panel" class="hidden">
+        <div class="panel-header">
+            <h3 id="insp-name">Celestial Body</h3>
+            <button id="btn-close-insp" class="btn-icon">&times;</button>
+        </div>
+        <div class="panel-body">
+            <div class="data-group">
+                <div class="data-row"><span class="k">Mass:</span> <span id="insp-mass" class="v">1.0</span></div>
+                <div class="data-row"><span class="k">Radius:</span> <span id="insp-radius" class="v">1.0</span></div>
+                <div class="data-row"><span class="k">Velocity:</span> <span id="insp-speed" class="v">0.00 km/s</span></div>
+                <div class="data-row"><span class="k">Distance:</span> <span id="insp-dist" class="v">-</span></div>
+            </div>
+
+            <h4>Keplerian Telemetry</h4>
+            <div class="data-group">
+                <div class="data-row"><span class="k">Primary:</span> <span id="insp-primary" class="v">-</span></div>
+                <div class="data-row"><span class="k">Semi-Major (a):</span> <span id="insp-sma" class="v">-</span></div>
+                <div class="data-row"><span class="k">Eccentricity (e):</span> <span id="insp-ecc" class="v">-</span></div>
+                <div class="data-row"><span class="k">Period (T):</span> <span id="insp-period" class="v">-</span></div>
+                <div class="data-row"><span class="k">Orbit Regime:</span> <span id="insp-regime" class="v tag">-</span></div>
+            </div>
+
+            <h4>Orbital Maneuvers</h4>
+            <div class="btn-grid">
+                <button id="btn-circ" class="btn accent" title="Circularize orbit around primary">Auto-Circularize</button>
+                <button id="btn-prograde" class="btn" title="Accelerate along velocity vector">+10% Prograde</button>
+                <button id="btn-retrograde" class="btn" title="Decelerate along velocity vector">-10% Retrograde</button>
+                <button id="btn-stop" class="btn warning" title="Zero out velocity">Stop Dead</button>
+                <button id="btn-lock" class="btn" title="Fix position in space">Anchor Body</button>
+                <button id="btn-double-mass" class="btn" title="Double mass">2x Mass</button>
+                <button id="btn-half-mass" class="btn" title="Halve mass">0.5x Mass</button>
+                <button id="btn-delete" class="btn danger" title="Destroy celestial body">Destroy</button>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Bottom Controls & Toggles Toolbar -->
+    <footer id="bottom-bar">
+        <div class="toolbar-group">
+            <span class="group-label">Spawner:</span>
+            <select id="select-spawn">
+                <option value="earth">Earth Exoplanet</option>
+                <option value="mars">Mars Terrestrial</option>
+                <option value="jupiter">Gas Giant</option>
+                <option value="star">Solar Star</option>
+                <option value="blackhole">Black Hole</option>
+                <option value="swarm50">Star Cluster (50x)</option>
+                <option value="galaxy150">Mini Galaxy (150x)</option>
+                <option value="collapse100">Collapse Cloud (100x)</option>
+            </select>
+            <button id="btn-spawn-mode" class="btn toggle">SPAWN: OFF</button>
+        </div>
+
+        <div class="toolbar-group">
+            <span class="group-label">Visualizers:</span>
+            <button id="tog-trails" class="btn toggle active">Trails</button>
+            <button id="tog-grid" class="btn toggle active">Grid</button>
+            <button id="tog-spacetime" class="btn toggle">Spacetime 3D</button>
+            <button id="tog-vecfield" class="btn toggle">Vector Field</button>
+            <button id="tog-glow" class="btn toggle">Velocity Glow</button>
+            <button id="tog-2dmap" class="btn toggle" title="Toggle 2D Tactical Viewport (M)">2D Map</button>
+            <button id="tog-2dlabels" class="btn toggle active" title="Toggle 2D Map Celestial Labels (K)">2D Labels</button>
+            <button id="tog-heatmap" class="btn toggle" title="Toggle 2D Gravitational Heatmap (H)">Heatmap</button>
+            <button id="tog-3dheatmap" class="btn toggle" title="Toggle 3D Heatmap Plane Grid">3D Heatmap</button>
+            <button id="tog-lagrange" class="btn toggle active" title="Toggle 3D & 2D Lagrange Points (L1-L5)">Lagrange</button>
+        </div>
+
+        <div class="toolbar-group">
+            <span class="group-label">Physics:</span>
+            <button id="tog-barnes-hut" class="btn toggle active">Barnes-Hut</button>
+            <button id="tog-relativity" class="btn toggle">1PN Relativity</button>
+            <button id="tog-roche" class="btn toggle active">Roche Limit</button>
+            <select id="select-collision">
+                <option value="0">Merge (Coalesce)</option>
+                <option value="1">Bounce (Elastic)</option>
+                <option value="2">Ghost (Pass-thru)</option>
+            </select>
+        </div>
+    </footer>
+
+    <!-- Loading Modal -->
+    <div id="loading-overlay">
+        <div class="loading-box">
+            <div class="spinner">🪐</div>
+            <h2>Initializing WebAssembly Engine...</h2>
+            <p>Compiling 64-bit multi-pole Octree and Symplectic Verlet Integrator...</p>
+        </div>
+    </div>
+
+    <!-- Help Modal -->
+    <div id="help-modal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>🚀 Gravity Simulator 3D - User Manual & Hotkeys</h3>
+                <button id="btn-close-help" class="btn-icon">&times;</button>
+            </div>
+            <div class="modal-body">
+                <h4>Navigation & Controls</h4>
+                <ul>
+                    <li><b>Left Click Drag:</b> Orbit 3D perspective camera</li>
+                    <li><b>Right Click Drag:</b> Pan target focal point</li>
+                    <li><b>Mouse Wheel:</b> Zoom in / out</li>
+                    <li><b>Left Click on Body:</b> Inspect orbital elements and maneuvers</li>
+                    <li><b>Left Click + Drag (in Spawn Mode):</b> Aim slingshot velocity vector and launch</li>
+                </ul>
+
+                <h4>Hotkeys</h4>
+                <ul>
+                    <li><kbd>Space</kbd>: Pause / Resume physics simulation</li>
+                    <li><kbd>,</kbd> / <kbd>.</kbd> <i>(or &lt; / &gt;)</i>: Decrease / Increase simulation speed (by active step: ±0.1x, ±0.5x, ±2.0x; Hold Shift for fine ±0.1x)</li>
+                    <li><kbd>\</kbd>: Reset simulation speed to 1.0x (Normal)</li>
+                    <li><kbd>1 - 9, 0</kbd>: Instant preset selector</li>
+                    <li><kbd>B</kbd>: Toggle Barnes-Hut Octree ($O(N \log N)$ vs Direct $O(N^2)$)</li>
+                    <li><kbd>P</kbd>: Toggle 3D Spacetime Curvature Potential Grid</li>
+                    <li><kbd>O</kbd>: Toggle Gravitational 3D Vector Field (32x32 needles)</li>
+                    <li><kbd>[</kbd> / <kbd>]</kbd>: Decrease / Increase Spacetime Grid Scale (0.5x - 3.5x)</li>
+                    <li><kbd>L</kbd>: Toggle Particle Velocity Glow Mode</li>
+                    <li><kbd>G</kbd>: Toggle 1PN General Relativity Precession</li>
+                    <li><kbd>M</kbd>: Toggle 2D Tactical Viewport</li>
+                    <li><kbd>H</kbd>: Toggle Continuous Gravitational Heatmap in 2D</li>
+                    <li><kbd>R</kbd>: Reset Camera viewpoint</li>
+                    <li><kbd>N</kbd>: Lock Camera to Nearest Object</li>
+                </ul>
+
+                <h4>Mathematical Engine</h4>
+                <p>This WebAssembly build runs the exact same high-precision Symplectic Velocity Verlet integrator, Barnes-Hut octree ($O(N \log N)$), 1PN General Relativity precession, and Roche tidal fragmentation algorithms compiled from Go directly into native WebAssembly.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2D Tactical Viewport & Gravitational Heatmap Overlay -->
+    <div id="viewport-2d-container" class="hidden">
+        <div class="viewport-2d-header">
+            <span class="viewport-2d-title">🛰️ 2D TACTICAL ORBITAL MAP</span>
+            <div class="viewport-2d-actions">
+                <span id="viewport-2d-scale">Zoom: 1.0x</span>
+                <button id="btn-2d-labels" class="btn-mini active" title="Toggle 2D Labels (K)">LBL</button>
+                <button id="btn-2d-reset" class="btn-mini" title="Reset Viewport Pan/Zoom">Reset</button>
+                <button id="btn-2d-fullscreen" class="btn-mini" title="Toggle Fullscreen">⛶</button>
+                <button id="btn-close-2d" class="btn-mini" title="Close 2D Map">&times;</button>
+            </div>
+        </div>
+        <canvas id="canvas-2d" width="340" height="260"></canvas>
+    </div>
+
+    <!-- Notification Toast -->
+    <div id="toast" class="toast hidden"></div>
+
+    <script src="app.js"></script>
+</body>
+</html>

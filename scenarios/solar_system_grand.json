@@ -1,0 +1,674 @@
+{
+  "version": "1.0",
+  "name": "Grand Solar System (All Planets + Belt + Moons)",
+  "description": "Comprehensive solar system simulation including all 8 planets, Main Asteroid Belt, major moons, and Halley's comet",
+  "timestamp": 1789066489,
+  "config": {
+    "g": 1,
+    "time_scale": 1,
+    "sub_steps": 6,
+    "softening": 0.8,
+    "collision_mode": "merge",
+    "use_barnes_hut": false,
+    "barnes_hut_theta": 0,
+    "enable_relativity": false,
+    "speed_of_light": 0,
+    "enable_roche_limit": false,
+    "show_textures": true
+  },
+  "bodies": [
+    {
+      "id": 1,
+      "name": "Sun",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "mass": 12000,
+      "radius": 4.5,
+      "color": [
+        255,
+        215,
+        0,
+        255
+      ],
+      "is_stationary": true,
+      "is_star": true,
+      "texture_type": "sun",
+      "rotation_speed": 0
+    },
+    {
+      "id": 2,
+      "name": "Mercury",
+      "position": [
+        12,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        -31.62
+      ],
+      "mass": 0.4,
+      "radius": 0.65,
+      "color": [
+        170,
+        170,
+        170,
+        255
+      ],
+      "is_stationary": false,
+      "is_star": false,
+      "texture_type": "moon",
+      "rotation_speed": 0
+    },
+    {
+      "id": 3,
+      "name": "Venus",
+      "position": [
+        19,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        -25.13
+      ],
+      "mass": 1.2,
+      "radius": 0.95,
+      "color": [
+        225,
+        200,
+        140,
+        255
+      ],
+      "is_stationary": false,
+      "is_star": false,
+      "texture_type": "desert",
+      "rotation_speed": 0
+    },
+    {
+      "id": 4,
+      "name": "Earth",
+      "position": [
+        28,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        -20.7
+      ],
+      "mass": 2,
+      "radius": 1.15,
+      "color": [
+        70,
+        150,
+        255,
+        255
+      ],
+      "is_stationary": false,
+      "is_star": false,
+      "texture_type": "terrestrial",
+      "rotation_speed": 0
+    },
+    {
+      "id": 5,
+      "name": "Moon",
+      "position": [
+        30.5,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        -21.6
+      ],
+      "mass": 0.05,
+      "radius": 0.35,
+      "color": [
+        190,
+        190,
+        190,
+        255
+      ],
+      "is_stationary": false,
+      "is_star": false,
+      "texture_type": "moon",
+      "rotation_speed": 0
+    },
+    {
+      "id": 6,
+      "name": "Mars",
+      "position": [
+        38,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        -17.77
+      ],
+      "mass": 0.7,
+      "radius": 0.82,
+      "color": [
+        230,
+        80,
+        45,
+        255
+      ],
+      "is_stationary": false,
+      "is_star": false,
+      "texture_type": "desert",
+      "rotation_speed": 0
+    },
+    {
+      "id": 7,
+      "name": "Ceres (Dwarf Planet)",
+      "position": [
+        44,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        -16.51
+      ],
+      "mass": 0.05,
+      "radius": 0.45,
+      "color": [
+        180,
+        170,
+        160,
+        255
+      ],
+      "is_stationary": false,
+      "is_star": false,
+      "texture_type": "dwarf_planet",
+      "rotation_speed": 0
+    },
+    {
+      "id": 8,
+      "name": "Jupiter",
+      "position": [
+        58,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        -14.38
+      ],
+      "mass": 25,
+      "radius": 2.6,
+      "color": [
+        220,
+        175,
+        125,
+        255
+      ],
+      "is_stationary": false,
+      "is_star": false,
+      "texture_type": "gas_giant",
+      "rotation_speed": 0
+    },
+    {
+      "id": 9,
+      "name": "Ganymede",
+      "position": [
+        62.5,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        -16.74
+      ],
+      "mass": 0.03,
+      "radius": 0.38,
+      "color": [
+        200,
+        210,
+        220,
+        255
+      ],
+      "is_stationary": false,
+      "is_star": false,
+      "texture_type": "moon",
+      "rotation_speed": 0
+    },
+    {
+      "id": 10,
+      "name": "Saturn",
+      "position": [
+        85,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        -11.88
+      ],
+      "mass": 18,
+      "radius": 2.2,
+      "color": [
+        235,
+        210,
+        160,
+        255
+      ],
+      "is_stationary": false,
+      "is_star": false,
+      "ring_inner": 3,
+      "ring_outer": 5.2,
+      "texture_type": "gas_giant",
+      "rotation_speed": 0
+    },
+    {
+      "id": 11,
+      "name": "Titan",
+      "position": [
+        89.8,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        -13.82
+      ],
+      "mass": 0.03,
+      "radius": 0.38,
+      "color": [
+        240,
+        200,
+        120,
+        255
+      ],
+      "is_stationary": false,
+      "is_star": false,
+      "texture_type": "moon",
+      "rotation_speed": 0
+    },
+    {
+      "id": 12,
+      "name": "Uranus",
+      "position": [
+        115,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        -10.22
+      ],
+      "mass": 8,
+      "radius": 1.6,
+      "color": [
+        140,
+        220,
+        235,
+        255
+      ],
+      "is_stationary": false,
+      "is_star": false,
+      "texture_type": "ice_giant",
+      "rotation_speed": 0
+    },
+    {
+      "id": 13,
+      "name": "Neptune",
+      "position": [
+        145,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        -9.1
+      ],
+      "mass": 9,
+      "radius": 1.6,
+      "color": [
+        75,
+        110,
+        245,
+        255
+      ],
+      "is_stationary": false,
+      "is_star": false,
+      "texture_type": "ice_giant",
+      "rotation_speed": 0
+    },
+    {
+      "id": 14,
+      "name": "Pluto (Dwarf Planet)",
+      "position": [
+        180,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        -8.16
+      ],
+      "mass": 0.04,
+      "radius": 0.45,
+      "color": [
+        215,
+        185,
+        155,
+        255
+      ],
+      "is_stationary": false,
+      "is_star": false,
+      "texture_type": "dwarf_planet",
+      "rotation_speed": 0
+    },
+    {
+      "id": 15,
+      "name": "Comet Halley",
+      "position": [
+        110,
+        16,
+        35
+      ],
+      "velocity": [
+        -3.5,
+        -1.2,
+        -4.5
+      ],
+      "mass": 0.01,
+      "radius": 0.4,
+      "color": [
+        190,
+        240,
+        255,
+        255
+      ],
+      "is_stationary": false,
+      "is_star": false,
+      "is_comet": true,
+      "texture_type": "comet",
+      "rotation_speed": 0
+    },
+    {
+      "id": 16,
+      "name": "Asteroid #1",
+      "position": [
+        42,
+        -0.4,
+        0
+      ],
+      "velocity": [
+        -0,
+        0,
+        16.903086
+      ],
+      "mass": 0.002,
+      "radius": 0.22,
+      "color": [
+        180,
+        175,
+        165,
+        255
+      ],
+      "is_stationary": false,
+      "is_star": false,
+      "texture_type": "moon",
+      "rotation_speed": 0
+    },
+    {
+      "id": 17,
+      "name": "Asteroid #2",
+      "position": [
+        35.192238,
+        0,
+        25.568659
+      ],
+      "velocity": [
+        -9.762582,
+        0,
+        13.437041
+      ],
+      "mass": 0.002,
+      "radius": 0.22,
+      "color": [
+        180,
+        175,
+        165,
+        255
+      ],
+      "is_stationary": false,
+      "is_star": false,
+      "texture_type": "moon",
+      "rotation_speed": 0
+    },
+    {
+      "id": 18,
+      "name": "Asteroid #3",
+      "position": [
+        13.905765,
+        0.4,
+        42.797543
+      ],
+      "velocity": [
+        -15.530688,
+        0,
+        5.0462265
+      ],
+      "mass": 0.002,
+      "radius": 0.22,
+      "color": [
+        180,
+        175,
+        165,
+        255
+      ],
+      "is_stationary": false,
+      "is_star": false,
+      "texture_type": "moon",
+      "rotation_speed": 0
+    },
+    {
+      "id": 19,
+      "name": "Asteroid #4",
+      "position": [
+        -14.36929,
+        -0.4,
+        44.22413
+      ],
+      "velocity": [
+        -15.278139,
+        0,
+        -4.9641685
+      ],
+      "mass": 0.002,
+      "radius": 0.22,
+      "color": [
+        180,
+        175,
+        165,
+        255
+      ],
+      "is_stationary": false,
+      "is_star": false,
+      "texture_type": "moon",
+      "rotation_speed": 0
+    },
+    {
+      "id": 20,
+      "name": "Asteroid #5",
+      "position": [
+        -33.978714,
+        0,
+        24.686981
+      ],
+      "velocity": [
+        -9.935384,
+        0,
+        -13.674883
+      ],
+      "mass": 0.002,
+      "radius": 0.22,
+      "color": [
+        180,
+        175,
+        165,
+        255
+      ],
+      "is_stationary": false,
+      "is_star": false,
+      "texture_type": "moon",
+      "rotation_speed": 0
+    },
+    {
+      "id": 21,
+      "name": "Asteroid #6",
+      "position": [
+        -43.5,
+        0.4,
+        5.3272134e-15
+      ],
+      "velocity": [
+        -2.0340277e-15,
+        0,
+        -16.609097
+      ],
+      "mass": 0.002,
+      "radius": 0.22,
+      "color": [
+        180,
+        175,
+        165,
+        255
+      ],
+      "is_stationary": false,
+      "is_star": false,
+      "texture_type": "moon",
+      "rotation_speed": 0
+    },
+    {
+      "id": 22,
+      "name": "Asteroid #7",
+      "position": [
+        -36.405766,
+        -0.4,
+        -26.450336
+      ],
+      "velocity": [
+        9.598493,
+        0,
+        -13.211192
+      ],
+      "mass": 0.002,
+      "radius": 0.22,
+      "color": [
+        180,
+        175,
+        165,
+        255
+      ],
+      "is_stationary": false,
+      "is_star": false,
+      "texture_type": "moon",
+      "rotation_speed": 0
+    },
+    {
+      "id": 23,
+      "name": "Asteroid #8",
+      "position": [
+        -14.36929,
+        0,
+        -44.22413
+      ],
+      "velocity": [
+        15.278139,
+        0,
+        -4.9641685
+      ],
+      "mass": 0.002,
+      "radius": 0.22,
+      "color": [
+        180,
+        175,
+        165,
+        255
+      ],
+      "is_stationary": false,
+      "is_star": false,
+      "texture_type": "moon",
+      "rotation_speed": 0
+    },
+    {
+      "id": 24,
+      "name": "Asteroid #9",
+      "position": [
+        12.978714,
+        0.4,
+        -39.944374
+      ],
+      "velocity": [
+        16.075788,
+        0,
+        5.2233405
+      ],
+      "mass": 0.002,
+      "radius": 0.22,
+      "color": [
+        180,
+        175,
+        165,
+        255
+      ],
+      "is_stationary": false,
+      "is_star": false,
+      "texture_type": "moon",
+      "rotation_speed": 0
+    },
+    {
+      "id": 25,
+      "name": "Asteroid #10",
+      "position": [
+        35.192238,
+        -0.4,
+        -25.568659
+      ],
+      "velocity": [
+        9.762582,
+        0,
+        13.437041
+      ],
+      "mass": 0.002,
+      "radius": 0.22,
+      "color": [
+        180,
+        175,
+        165,
+        255
+      ],
+      "is_stationary": false,
+      "is_star": false,
+      "texture_type": "moon",
+      "rotation_speed": 0
+    }
+  ]
+}

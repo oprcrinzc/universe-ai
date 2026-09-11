@@ -1,0 +1,229 @@
+{
+  "version": "1.0",
+  "name": "TRAPPIST-1 Resonant Exoplanet System",
+  "description": "Ultra-cool red dwarf star with 7 resonant terrestrial planets in tight orbits",
+  "timestamp": 1789063386,
+  "config": {
+    "g": 1,
+    "time_scale": 1,
+    "sub_steps": 5,
+    "softening": 0.8,
+    "collision_mode": "merge",
+    "use_barnes_hut": false,
+    "barnes_hut_theta": 0.7,
+    "enable_relativity": false,
+    "speed_of_light": 200,
+    "enable_roche_limit": true,
+    "show_textures": true
+  },
+  "bodies": [
+    {
+      "id": 1,
+      "name": "TRAPPIST-1 (Red Dwarf)",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "mass": 8000,
+      "radius": 3.5,
+      "color": [
+        255,
+        90,
+        40,
+        255
+      ],
+      "is_stationary": true,
+      "is_star": true,
+      "texture_type": "sun",
+      "rotation_speed": 0
+    },
+    {
+      "id": 2,
+      "name": "TRAPPIST-1b",
+      "position": [
+        11,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        -26.96
+      ],
+      "mass": 1.02,
+      "radius": 0.95,
+      "color": [
+        210,
+        160,
+        120,
+        255
+      ],
+      "is_stationary": false,
+      "is_star": false,
+      "texture_type": "desert",
+      "rotation_speed": 0
+    },
+    {
+      "id": 3,
+      "name": "TRAPPIST-1c",
+      "position": [
+        15.2,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        -22.94
+      ],
+      "mass": 1.16,
+      "radius": 0.98,
+      "color": [
+        180,
+        190,
+        210,
+        255
+      ],
+      "is_stationary": false,
+      "is_star": false,
+      "texture_type": "terrestrial",
+      "rotation_speed": 0
+    },
+    {
+      "id": 4,
+      "name": "TRAPPIST-1d",
+      "position": [
+        21.5,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        -19.29
+      ],
+      "mass": 0.3,
+      "radius": 0.72,
+      "color": [
+        160,
+        210,
+        240,
+        255
+      ],
+      "is_stationary": false,
+      "is_star": false,
+      "texture_type": "terrestrial",
+      "rotation_speed": 0
+    },
+    {
+      "id": 5,
+      "name": "TRAPPIST-1e (Habitable)",
+      "position": [
+        28,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        -16.9
+      ],
+      "mass": 0.77,
+      "radius": 0.88,
+      "color": [
+        70,
+        170,
+        255,
+        255
+      ],
+      "is_stationary": false,
+      "is_star": false,
+      "texture_type": "terrestrial",
+      "rotation_speed": 0
+    },
+    {
+      "id": 6,
+      "name": "TRAPPIST-1f",
+      "position": [
+        36,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        -14.9
+      ],
+      "mass": 0.93,
+      "radius": 0.94,
+      "color": [
+        140,
+        200,
+        220,
+        255
+      ],
+      "is_stationary": false,
+      "is_star": false,
+      "texture_type": "terrestrial",
+      "rotation_speed": 0
+    },
+    {
+      "id": 7,
+      "name": "TRAPPIST-1g",
+      "position": [
+        45,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        -13.33
+      ],
+      "mass": 1.15,
+      "radius": 1.02,
+      "color": [
+        130,
+        160,
+        200,
+        255
+      ],
+      "is_stationary": false,
+      "is_star": false,
+      "texture_type": "ice_giant",
+      "rotation_speed": 0
+    },
+    {
+      "id": 8,
+      "name": "TRAPPIST-1h",
+      "position": [
+        58,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        -11.74
+      ],
+      "mass": 0.33,
+      "radius": 0.74,
+      "color": [
+        190,
+        200,
+        220,
+        255
+      ],
+      "is_stationary": false,
+      "is_star": false,
+      "texture_type": "moon",
+      "rotation_speed": 0
+    }
+  ]
+}

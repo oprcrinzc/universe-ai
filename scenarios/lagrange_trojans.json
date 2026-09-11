@@ -1,0 +1,385 @@
+{
+  "version": "1.0",
+  "name": "Lagrange L4 \u0026 L5 Trojan Asteroid Swarms",
+  "description": "Stable gravitational equilateral Lagrangian equilibrium points with Greek and Trojan asteroid swarms",
+  "timestamp": 1789066489,
+  "config": {
+    "g": 1,
+    "time_scale": 1,
+    "sub_steps": 6,
+    "softening": 0.5,
+    "collision_mode": "merge",
+    "use_barnes_hut": false,
+    "barnes_hut_theta": 0,
+    "enable_relativity": false,
+    "speed_of_light": 0,
+    "enable_roche_limit": false,
+    "show_textures": true
+  },
+  "bodies": [
+    {
+      "id": 1,
+      "name": "Helios (Central Star)",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "mass": 15000,
+      "radius": 4,
+      "color": [
+        255,
+        200,
+        60,
+        255
+      ],
+      "is_stationary": true,
+      "is_star": true,
+      "texture_type": "sun",
+      "rotation_speed": 0
+    },
+    {
+      "id": 2,
+      "name": "Gas Giant Zeus",
+      "position": [
+        50,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        -17.320509
+      ],
+      "mass": 45,
+      "radius": 2.4,
+      "color": [
+        220,
+        160,
+        100,
+        255
+      ],
+      "is_stationary": false,
+      "is_star": false,
+      "texture_type": "gas_giant",
+      "rotation_speed": 0
+    },
+    {
+      "id": 3,
+      "name": "Trojan #1 (L4)",
+      "position": [
+        30.067293,
+        0,
+        37.67224
+      ],
+      "velocity": [
+        -13.78785,
+        0,
+        11.004477
+      ],
+      "mass": 0.05,
+      "radius": 0.45,
+      "color": [
+        160,
+        200,
+        240,
+        255
+      ],
+      "is_stationary": false,
+      "is_star": false,
+      "texture_type": "moon",
+      "rotation_speed": 0
+    },
+    {
+      "id": 4,
+      "name": "Trojan #2 (L4)",
+      "position": [
+        28.790674,
+        0,
+        40.879055
+      ],
+      "velocity": [
+        -14.16092,
+        0,
+        9.973382
+      ],
+      "mass": 0.05,
+      "radius": 0.45,
+      "color": [
+        160,
+        200,
+        240,
+        255
+      ],
+      "is_stationary": false,
+      "is_star": false,
+      "texture_type": "moon",
+      "rotation_speed": 0
+    },
+    {
+      "id": 5,
+      "name": "Trojan #3 (L4)",
+      "position": [
+        27.233948,
+        0,
+        44.063046
+      ],
+      "velocity": [
+        -14.475231,
+        0,
+        8.946673
+      ],
+      "mass": 0.05,
+      "radius": 0.45,
+      "color": [
+        160,
+        200,
+        240,
+        255
+      ],
+      "is_stationary": false,
+      "is_star": false,
+      "texture_type": "moon",
+      "rotation_speed": 0
+    },
+    {
+      "id": 6,
+      "name": "Trojan #4 (L4)",
+      "position": [
+        22.83707,
+        0,
+        42.446533
+      ],
+      "velocity": [
+        -15.535216,
+        0,
+        8.358253
+      ],
+      "mass": 0.05,
+      "radius": 0.45,
+      "color": [
+        160,
+        200,
+        240,
+        255
+      ],
+      "is_stationary": false,
+      "is_star": false,
+      "texture_type": "moon",
+      "rotation_speed": 0
+    },
+    {
+      "id": 7,
+      "name": "Trojan #5 (L4)",
+      "position": [
+        21.006964,
+        0,
+        45.372982
+      ],
+      "velocity": [
+        -15.717662,
+        0,
+        7.277025
+      ],
+      "mass": 0.05,
+      "radius": 0.45,
+      "color": [
+        160,
+        200,
+        240,
+        255
+      ],
+      "is_stationary": false,
+      "is_star": false,
+      "texture_type": "moon",
+      "rotation_speed": 0
+    },
+    {
+      "id": 8,
+      "name": "Trojan #6 (L4)",
+      "position": [
+        18.90536,
+        0,
+        48.226833
+      ],
+      "velocity": [
+        -15.843084,
+        0,
+        6.2106338
+      ],
+      "mass": 0.05,
+      "radius": 0.45,
+      "color": [
+        160,
+        200,
+        240,
+        255
+      ],
+      "is_stationary": false,
+      "is_star": false,
+      "texture_type": "moon",
+      "rotation_speed": 0
+    },
+    {
+      "id": 9,
+      "name": "Greek #1 (L5)",
+      "position": [
+        17.591473,
+        0,
+        -44.87516
+      ],
+      "velocity": [
+        16.424082,
+        0,
+        6.43839
+      ],
+      "mass": 0.05,
+      "radius": 0.45,
+      "color": [
+        240,
+        190,
+        140,
+        255
+      ],
+      "is_stationary": false,
+      "is_star": false,
+      "texture_type": "moon",
+      "rotation_speed": 0
+    },
+    {
+      "id": 10,
+      "name": "Greek #2 (L5)",
+      "position": [
+        21.006964,
+        0,
+        -45.372982
+      ],
+      "velocity": [
+        15.717662,
+        0,
+        7.277025
+      ],
+      "mass": 0.05,
+      "radius": 0.45,
+      "color": [
+        240,
+        190,
+        140,
+        255
+      ],
+      "is_stationary": false,
+      "is_star": false,
+      "texture_type": "moon",
+      "rotation_speed": 0
+    },
+    {
+      "id": 11,
+      "name": "Greek #3 (L5)",
+      "position": [
+        24.542744,
+        0,
+        -45.616814
+      ],
+      "velocity": [
+        14.985662,
+        0,
+        8.062581
+      ],
+      "mass": 0.05,
+      "radius": 0.45,
+      "color": [
+        240,
+        190,
+        140,
+        255
+      ],
+      "is_stationary": false,
+      "is_star": false,
+      "texture_type": "moon",
+      "rotation_speed": 0
+    },
+    {
+      "id": 12,
+      "name": "Greek #4 (L5)",
+      "position": [
+        25.34124,
+        0,
+        -41.00075
+      ],
+      "velocity": [
+        15.006067,
+        0,
+        9.274766
+      ],
+      "mass": 0.05,
+      "radius": 0.45,
+      "color": [
+        240,
+        190,
+        140,
+        255
+      ],
+      "is_stationary": false,
+      "is_star": false,
+      "texture_type": "moon",
+      "rotation_speed": 0
+    },
+    {
+      "id": 13,
+      "name": "Greek #5 (L5)",
+      "position": [
+        28.790674,
+        0,
+        -40.879055
+      ],
+      "velocity": [
+        14.16092,
+        0,
+        9.973382
+      ],
+      "mass": 0.05,
+      "radius": 0.45,
+      "color": [
+        240,
+        190,
+        140,
+        255
+      ],
+      "is_stationary": false,
+      "is_star": false,
+      "texture_type": "moon",
+      "rotation_speed": 0
+    },
+    {
+      "id": 14,
+      "name": "Greek #6 (L5)",
+      "position": [
+        32.312984,
+        0,
+        -40.48594
+      ],
+      "velocity": [
+        13.300109,
+        0,
+        10.615196
+      ],
+      "mass": 0.05,
+      "radius": 0.45,
+      "color": [
+        240,
+        190,
+        140,
+        255
+      ],
+      "is_stationary": false,
+      "is_star": false,
+      "texture_type": "moon",
+      "rotation_speed": 0
+    }
+  ]
+}

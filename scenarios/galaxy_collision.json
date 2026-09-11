@@ -1,0 +1,1009 @@
+{
+  "version": "1.0",
+  "name": "Spiral Galaxy Hyperbolic Collision",
+  "description": "Two colliding disk galaxies generating dramatic tidal bridges and stellar ejections",
+  "timestamp": 1789066489,
+  "config": {
+    "g": 1,
+    "time_scale": 1.2,
+    "sub_steps": 5,
+    "softening": 0.8,
+    "collision_mode": "merge",
+    "use_barnes_hut": true,
+    "barnes_hut_theta": 0.7,
+    "enable_relativity": false,
+    "speed_of_light": 0,
+    "enable_roche_limit": false,
+    "show_textures": true
+  },
+  "bodies": [
+    {
+      "id": 1,
+      "name": "SMBH Andromeda",
+      "position": [
+        -45,
+        0,
+        -20
+      ],
+      "velocity": [
+        1.8,
+        0.2,
+        1.2
+      ],
+      "mass": 18000,
+      "radius": 3.8,
+      "color": [
+        30,
+        20,
+        50,
+        255
+      ],
+      "is_stationary": false,
+      "is_star": true,
+      "texture_type": "black_hole",
+      "rotation_speed": 0
+    },
+    {
+      "id": 2,
+      "name": "SMBH Milky Way",
+      "position": [
+        45,
+        0,
+        20
+      ],
+      "velocity": [
+        -1.8,
+        -0.2,
+        -1.2
+      ],
+      "mass": 14000,
+      "radius": 3.5,
+      "color": [
+        20,
+        30,
+        60,
+        255
+      ],
+      "is_stationary": false,
+      "is_star": true,
+      "texture_type": "black_hole",
+      "rotation_speed": 0
+    },
+    {
+      "id": 3,
+      "name": "Andromeda Star 1",
+      "position": [
+        -33,
+        -2,
+        -20
+      ],
+      "velocity": [
+        1.8,
+        0.2,
+        39.929832
+      ],
+      "mass": 1,
+      "radius": 0.5,
+      "color": [
+        160,
+        210,
+        255,
+        255
+      ],
+      "is_stationary": false,
+      "is_star": false,
+      "texture_type": "moon",
+      "rotation_speed": 0
+    },
+    {
+      "id": 4,
+      "name": "Andromeda Star 2",
+      "position": [
+        -41.201515,
+        0,
+        -6.317474
+      ],
+      "velocity": [
+        -32.505997,
+        0.2,
+        10.723881
+      ],
+      "mass": 1,
+      "radius": 0.5,
+      "color": [
+        160,
+        210,
+        255,
+        255
+      ],
+      "is_stationary": false,
+      "is_star": false,
+      "texture_type": "moon",
+      "rotation_speed": 0
+    },
+    {
+      "id": 5,
+      "name": "Andromeda Star 3",
+      "position": [
+        -59.052975,
+        2,
+        -11.545777
+      ],
+      "velocity": [
+        -15.278281,
+        0.2,
+        -27.18826
+      ],
+      "mass": 1,
+      "radius": 0.5,
+      "color": [
+        160,
+        210,
+        255,
+        255
+      ],
+      "is_stationary": false,
+      "is_star": false,
+      "texture_type": "moon",
+      "rotation_speed": 0
+    },
+    {
+      "id": 6,
+      "name": "Andromeda Star 4",
+      "position": [
+        -58.502342,
+        -2,
+        -32.79245
+      ],
+      "velocity": [
+        23.195408,
+        0.2,
+        -21.382702
+      ],
+      "mass": 1,
+      "radius": 0.5,
+      "color": [
+        160,
+        210,
+        255,
+        255
+      ],
+      "is_stationary": false,
+      "is_star": false,
+      "texture_type": "moon",
+      "rotation_speed": 0
+    },
+    {
+      "id": 7,
+      "name": "Andromeda Star 5",
+      "position": [
+        -35.254852,
+        0,
+        -38.37586
+      ],
+      "velocity": [
+        27.788958,
+        0.2,
+        14.982552
+      ],
+      "mass": 1,
+      "radius": 0.5,
+      "color": [
+        160,
+        210,
+        255,
+        255
+      ],
+      "is_stationary": false,
+      "is_star": false,
+      "texture_type": "moon",
+      "rotation_speed": 0
+    },
+    {
+      "id": 8,
+      "name": "Andromeda Star 6",
+      "position": [
+        -22.538485,
+        2,
+        -15.05224
+      ],
+      "velocity": [
+        -4.218013,
+        0.2,
+        28.52018
+      ],
+      "mass": 1,
+      "radius": 0.5,
+      "color": [
+        160,
+        210,
+        255,
+        255
+      ],
+      "is_stationary": false,
+      "is_star": false,
+      "texture_type": "moon",
+      "rotation_speed": 0
+    },
+    {
+      "id": 9,
+      "name": "Andromeda Star 7",
+      "position": [
+        -43.640324,
+        -2,
+        5.1632924
+      ],
+      "velocity": [
+        -24.887194,
+        0.2,
+        2.6420193
+      ],
+      "mass": 1,
+      "radius": 0.5,
+      "color": [
+        160,
+        210,
+        255,
+        255
+      ],
+      "is_stationary": false,
+      "is_star": false,
+      "texture_type": "moon",
+      "rotation_speed": 0
+    },
+    {
+      "id": 10,
+      "name": "Andromeda Star 8",
+      "position": [
+        -70.967575,
+        0,
+        -11.256705
+      ],
+      "velocity": [
+        -6.378724,
+        0.2,
+        -23.090796
+      ],
+      "mass": 1,
+      "radius": 0.5,
+      "color": [
+        160,
+        210,
+        255,
+        255
+      ],
+      "is_stationary": false,
+      "is_star": false,
+      "texture_type": "moon",
+      "rotation_speed": 0
+    },
+    {
+      "id": 11,
+      "name": "Andromeda Star 9",
+      "position": [
+        -61.605133,
+        2,
+        -44.503662
+      ],
+      "velocity": [
+        22.214075,
+        0.2,
+        -12.633786
+      ],
+      "mass": 1,
+      "radius": 0.5,
+      "color": [
+        160,
+        210,
+        255,
+        255
+      ],
+      "is_stationary": false,
+      "is_star": false,
+      "texture_type": "moon",
+      "rotation_speed": 0
+    },
+    {
+      "id": 12,
+      "name": "Andromeda Star 10",
+      "position": [
+        -24.406437,
+        -2,
+        -44.23108
+      ],
+      "velocity": [
+        19.928768,
+        0.2,
+        16.607319
+      ],
+      "mass": 1,
+      "radius": 0.5,
+      "color": [
+        160,
+        210,
+        255,
+        255
+      ],
+      "is_stationary": false,
+      "is_star": false,
+      "texture_type": "moon",
+      "rotation_speed": 0
+    },
+    {
+      "id": 13,
+      "name": "Andromeda Star 11",
+      "position": [
+        -14.14681,
+        0,
+        -5.7143207
+      ],
+      "velocity": [
+        -7.8676023,
+        0.2,
+        22.079397
+      ],
+      "mass": 1,
+      "radius": 0.5,
+      "color": [
+        160,
+        210,
+        255,
+        255
+      ],
+      "is_stationary": false,
+      "is_star": false,
+      "texture_type": "moon",
+      "rotation_speed": 0
+    },
+    {
+      "id": 14,
+      "name": "Andromeda Star 12",
+      "position": [
+        -50.86854,
+        2,
+        15.721145
+      ],
+      "velocity": [
+        -20.203856,
+        0.2,
+        -2.4149613
+      ],
+      "mass": 1,
+      "radius": 0.5,
+      "color": [
+        160,
+        210,
+        255,
+        255
+      ],
+      "is_stationary": false,
+      "is_star": false,
+      "texture_type": "moon",
+      "rotation_speed": 0
+    },
+    {
+      "id": 15,
+      "name": "Andromeda Star 13",
+      "position": [
+        -83.17642,
+        -2,
+        -15.86226
+      ],
+      "velocity": [
+        -0.532935,
+        0.2,
+        -20.324577
+      ],
+      "mass": 1,
+      "radius": 0.5,
+      "color": [
+        160,
+        210,
+        255,
+        255
+      ],
+      "is_stationary": false,
+      "is_star": false,
+      "texture_type": "moon",
+      "rotation_speed": 0
+    },
+    {
+      "id": 16,
+      "name": "Andromeda Star 14",
+      "position": [
+        -60.012592,
+        0,
+        -57.722435
+      ],
+      "velocity": [
+        21.363516,
+        0.2,
+        -6.5857935
+      ],
+      "mass": 1,
+      "radius": 0.5,
+      "color": [
+        160,
+        210,
+        255,
+        255
+      ],
+      "is_stationary": false,
+      "is_star": false,
+      "texture_type": "moon",
+      "rotation_speed": 0
+    },
+    {
+      "id": 17,
+      "name": "Andromeda Star 15",
+      "position": [
+        -10.916114,
+        2,
+        -45.886845
+      ],
+      "velocity": [
+        14.203656,
+        0.2,
+        17.53126
+      ],
+      "mass": 1,
+      "radius": 0.5,
+      "color": [
+        160,
+        210,
+        255,
+        255
+      ],
+      "is_stationary": false,
+      "is_star": false,
+      "texture_type": "moon",
+      "rotation_speed": 0
+    },
+    {
+      "id": 18,
+      "name": "Andromeda Star 16",
+      "position": [
+        -9.188326,
+        -2,
+        7.2492943
+      ],
+      "velocity": [
+        -10.310798,
+        0.2,
+        17.116299
+      ],
+      "mass": 1,
+      "radius": 0.5,
+      "color": [
+        160,
+        210,
+        255,
+        255
+      ],
+      "is_stationary": false,
+      "is_star": false,
+      "texture_type": "moon",
+      "rotation_speed": 0
+    },
+    {
+      "id": 19,
+      "name": "Andromeda Star 17",
+      "position": [
+        -62.492004,
+        0,
+        23.839134
+      ],
+      "velocity": [
+        -16.337826,
+        0.2,
+        -6.037071
+      ],
+      "mass": 1,
+      "radius": 0.5,
+      "color": [
+        160,
+        210,
+        255,
+        255
+      ],
+      "is_stationary": false,
+      "is_star": false,
+      "texture_type": "moon",
+      "rotation_speed": 0
+    },
+    {
+      "id": 20,
+      "name": "Andromeda Star 18",
+      "position": [
+        -94.10763,
+        2,
+        -25.366648
+      ],
+      "velocity": [
+        3.8737142,
+        0.2,
+        -17.775568
+      ],
+      "mass": 1,
+      "radius": 0.5,
+      "color": [
+        160,
+        210,
+        255,
+        255
+      ],
+      "is_stationary": false,
+      "is_star": false,
+      "texture_type": "moon",
+      "rotation_speed": 0
+    },
+    {
+      "id": 21,
+      "name": "Milky Way Star 1",
+      "position": [
+        55,
+        0,
+        20
+      ],
+      "velocity": [
+        -1.8,
+        -0.2,
+        -38.616573
+      ],
+      "mass": 0.8,
+      "radius": 0.45,
+      "color": [
+        255,
+        220,
+        160,
+        255
+      ],
+      "is_stationary": false,
+      "is_star": false,
+      "texture_type": "moon",
+      "rotation_speed": 0
+    },
+    {
+      "id": 22,
+      "name": "Milky Way Star 2",
+      "position": [
+        47.039604,
+        3.547619,
+        31.825397
+      ],
+      "velocity": [
+        31.859516,
+        -0.2,
+        -7.005483
+      ],
+      "mass": 0.8,
+      "radius": 0.45,
+      "color": [
+        255,
+        220,
+        160,
+        255
+      ],
+      "is_stationary": false,
+      "is_star": false,
+      "texture_type": "moon",
+      "rotation_speed": 0
+    },
+    {
+      "id": 23,
+      "name": "Milky Way Star 3",
+      "position": [
+        31.808887,
+        1.4069502,
+        24.689835
+      ],
+      "velocity": [
+        8.793256,
+        -0.2,
+        28.595686
+      ],
+      "mass": 0.8,
+      "radius": 0.45,
+      "color": [
+        255,
+        220,
+        160,
+        255
+      ],
+      "is_stationary": false,
+      "is_star": false,
+      "texture_type": "moon",
+      "rotation_speed": 0
+    },
+    {
+      "id": 24,
+      "name": "Milky Way Star 4",
+      "position": [
+        37.155827,
+        -4.1835637,
+        6.0547876
+      ],
+      "velocity": [
+        -27.581558,
+        -0.2,
+        13.302111
+      ],
+      "mass": 0.8,
+      "radius": 0.45,
+      "color": [
+        255,
+        220,
+        160,
+        255
+      ],
+      "is_stationary": false,
+      "is_star": false,
+      "texture_type": "moon",
+      "rotation_speed": 0
+    },
+    {
+      "id": 25,
+      "name": "Milky Way Star 5",
+      "position": [
+        58.960186,
+        -3.40884,
+        8.6372
+      ],
+      "velocity": [
+        -19.405186,
+        -0.2,
+        -22.829498
+      ],
+      "mass": 0.8,
+      "radius": 0.45,
+      "color": [
+        255,
+        220,
+        160,
+        255
+      ],
+      "is_stationary": false,
+      "is_star": false,
+      "texture_type": "moon",
+      "rotation_speed": 0
+    },
+    {
+      "id": 26,
+      "name": "Milky Way Star 6",
+      "position": [
+        60.078045,
+        3.9419196,
+        33.139732
+      ],
+      "velocity": [
+        15.5822315,
+        -0.2,
+        -21.14638
+      ],
+      "mass": 0.8,
+      "radius": 0.45,
+      "color": [
+        255,
+        220,
+        160,
+        255
+      ],
+      "is_stationary": false,
+      "is_star": false,
+      "texture_type": "moon",
+      "rotation_speed": 0
+    },
+    {
+      "id": 27,
+      "name": "Milky Way Star 7",
+      "position": [
+        33.57565,
+        5.6403527,
+        38.801174
+      ],
+      "velocity": [
+        19.758326,
+        -0.2,
+        11.899705
+      ],
+      "mass": 0.8,
+      "radius": 0.45,
+      "color": [
+        255,
+        220,
+        160,
+        255
+      ],
+      "is_stationary": false,
+      "is_star": false,
+      "texture_type": "moon",
+      "rotation_speed": 0
+    },
+    {
+      "id": 28,
+      "name": "Milky Way Star 8",
+      "position": [
+        22.66977,
+        -2.6386497,
+        11.204501
+      ],
+      "velocity": [
+        -10.651312,
+        -0.2,
+        21.271929
+      ],
+      "mass": 0.8,
+      "radius": 0.45,
+      "color": [
+        255,
+        220,
+        160,
+        255
+      ],
+      "is_stationary": false,
+      "is_star": false,
+      "texture_type": "moon",
+      "rotation_speed": 0
+    },
+    {
+      "id": 29,
+      "name": "Milky Way Star 9",
+      "position": [
+        50.278126,
+        -7.637586,
+        -5.458621
+      ],
+      "velocity": [
+        -24.521599,
+        -0.2,
+        -5.910682
+      ],
+      "mass": 0.8,
+      "radius": 0.45,
+      "color": [
+        255,
+        220,
+        160,
+        255
+      ],
+      "is_stationary": false,
+      "is_star": false,
+      "texture_type": "moon",
+      "rotation_speed": 0
+    },
+    {
+      "id": 30,
+      "name": "Milky Way Star 10",
+      "position": [
+        72.98417,
+        0.2824336,
+        20.941444
+      ],
+      "velocity": [
+        -1.0481658,
+        -0.2,
+        -23.548037
+      ],
+      "mass": 0.8,
+      "radius": 0.45,
+      "color": [
+        255,
+        220,
+        160,
+        255
+      ],
+      "is_stationary": false,
+      "is_star": false,
+      "texture_type": "moon",
+      "rotation_speed": 0
+    },
+    {
+      "id": 31,
+      "name": "Milky Way Star 11",
+      "position": [
+        49.102116,
+        8.915466,
+        49.71822
+      ],
+      "velocity": [
+        19.599566,
+        -0.2,
+        -4.1538615
+      ],
+      "mass": 0.8,
+      "radius": 0.45,
+      "color": [
+        255,
+        220,
+        160,
+        255
+      ],
+      "is_stationary": false,
+      "is_star": false,
+      "texture_type": "moon",
+      "rotation_speed": 0
+    },
+    {
+      "id": 32,
+      "name": "Milky Way Star 12",
+      "position": [
+        14.5055065,
+        2.9099362,
+        29.699787
+      ],
+      "velocity": [
+        4.5401754,
+        -0.2,
+        18.73244
+      ],
+      "mass": 0.8,
+      "radius": 0.45,
+      "color": [
+        255,
+        220,
+        160,
+        255
+      ],
+      "is_stationary": false,
+      "is_star": false,
+      "texture_type": "moon",
+      "rotation_speed": 0
+    },
+    {
+      "id": 33,
+      "name": "Milky Way Star 13",
+      "position": [
+        29.336927,
+        -9.053184,
+        -10.177279
+      ],
+      "velocity": [
+        -19.810497,
+        -0.2,
+        8.148084
+      ],
+      "mass": 0.8,
+      "radius": 0.45,
+      "color": [
+        255,
+        220,
+        160,
+        255
+      ],
+      "is_stationary": false,
+      "is_star": false,
+      "texture_type": "moon",
+      "rotation_speed": 0
+    },
+    {
+      "id": 34,
+      "name": "Milky Way Star 14",
+      "position": [
+        73.668686,
+        -6.5321946,
+        -1.7739816
+      ],
+      "velocity": [
+        -13.727464,
+        -0.2,
+        -16.904282
+      ],
+      "mass": 0.8,
+      "radius": 0.45,
+      "color": [
+        255,
+        220,
+        160,
+        255
+      ],
+      "is_stationary": false,
+      "is_star": false,
+      "texture_type": "moon",
+      "rotation_speed": 0
+    },
+    {
+      "id": 35,
+      "name": "Milky Way Star 15",
+      "position": [
+        72.79267,
+        7.7743855,
+        45.91462
+      ],
+      "velocity": [
+        11.289812,
+        -0.2,
+        -15.238442
+      ],
+      "mass": 0.8,
+      "radius": 0.45,
+      "color": [
+        255,
+        220,
+        160,
+        255
+      ],
+      "is_stationary": false,
+      "is_star": false,
+      "texture_type": "moon",
+      "rotation_speed": 0
+    },
+    {
+      "id": 36,
+      "name": "Milky Way Star 16",
+      "position": [
+        23.09083,
+        10.039867,
+        53.466225
+      ],
+      "velocity": [
+        13.852394,
+        -0.2,
+        9.047076
+      ],
+      "mass": 0.8,
+      "radius": 0.45,
+      "color": [
+        255,
+        220,
+        160,
+        255
+      ],
+      "is_stationary": false,
+      "is_star": false,
+      "texture_type": "moon",
+      "rotation_speed": 0
+    },
+    {
+      "id": 37,
+      "name": "Milky Way Star 17",
+      "position": [
+        6.461722,
+        -5.0092015,
+        3.3026614
+      ],
+      "velocity": [
+        -9.05834,
+        -0.2,
+        15.552607
+      ],
+      "mass": 0.8,
+      "radius": 0.45,
+      "color": [
+        255,
+        220,
+        160,
+        255
+      ],
+      "is_stationary": false,
+      "is_star": false,
+      "texture_type": "moon",
+      "rotation_speed": 0
+    },
+    {
+      "id": 38,
+      "name": "Milky Way Star 18",
+      "position": [
+        55.375774,
+        -12.82774,
+        -22.759132
+      ],
+      "velocity": [
+        -19.134602,
+        -0.2,
+        -5.4063506
+      ],
+      "mass": 0.8,
+      "radius": 0.45,
+      "color": [
+        255,
+        220,
+        160,
+        255
+      ],
+      "is_stationary": false,
+      "is_star": false,
+      "texture_type": "moon",
+      "rotation_speed": 0
+    }
+  ]
+}

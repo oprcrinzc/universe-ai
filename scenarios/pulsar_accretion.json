@@ -1,0 +1,152 @@
+{
+  "version": "1.0",
+  "name": "Relativistic Pulsar \u0026 Red Giant Binary",
+  "description": "Millisecond pulsar with relativistic polar jets accreting matter from a swelling Red Supergiant",
+  "timestamp": 1789066489,
+  "config": {
+    "g": 1,
+    "time_scale": 1,
+    "sub_steps": 6,
+    "softening": 0.6,
+    "collision_mode": "merge",
+    "use_barnes_hut": false,
+    "barnes_hut_theta": 0,
+    "enable_relativity": true,
+    "speed_of_light": 170,
+    "enable_roche_limit": false,
+    "show_textures": true
+  },
+  "bodies": [
+    {
+      "id": 1,
+      "name": "Pulsar PSR-J0737",
+      "position": [
+        -14,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        11.2
+      ],
+      "mass": 5500,
+      "radius": 1.2,
+      "color": [
+        140,
+        200,
+        255,
+        255
+      ],
+      "is_stationary": false,
+      "is_star": true,
+      "is_pulsar": true,
+      "texture_type": "neutron_star",
+      "rotation_speed": 6
+    },
+    {
+      "id": 2,
+      "name": "Red Giant Betelgeuse II",
+      "position": [
+        11,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0,
+        -8.8
+      ],
+      "mass": 7000,
+      "radius": 4.8,
+      "color": [
+        255,
+        80,
+        40,
+        255
+      ],
+      "is_stationary": false,
+      "is_star": true,
+      "texture_type": "red_giant",
+      "rotation_speed": 0.3
+    },
+    {
+      "id": 3,
+      "name": "Accretion Clump 1",
+      "position": [
+        -2,
+        0,
+        2
+      ],
+      "velocity": [
+        -6.5,
+        0,
+        4
+      ],
+      "mass": 0.1,
+      "radius": 0.35,
+      "color": [
+        255,
+        180,
+        100,
+        255
+      ],
+      "is_stationary": false,
+      "is_star": false,
+      "texture_type": "moon",
+      "rotation_speed": 0
+    },
+    {
+      "id": 4,
+      "name": "Accretion Clump 2",
+      "position": [
+        -5,
+        0,
+        -3
+      ],
+      "velocity": [
+        5,
+        0,
+        -7
+      ],
+      "mass": 0.1,
+      "radius": 0.35,
+      "color": [
+        255,
+        180,
+        100,
+        255
+      ],
+      "is_stationary": false,
+      "is_star": false,
+      "texture_type": "moon",
+      "rotation_speed": 0
+    },
+    {
+      "id": 5,
+      "name": "Accretion Clump 3",
+      "position": [
+        -8,
+        0,
+        1.5
+      ],
+      "velocity": [
+        -8,
+        0,
+        -3.5
+      ],
+      "mass": 0.1,
+      "radius": 0.35,
+      "color": [
+        255,
+        180,
+        100,
+        255
+      ],
+      "is_stationary": false,
+      "is_star": false,
+      "texture_type": "moon",
+      "rotation_speed": 0
+    }
+  ]
+}
