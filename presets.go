@@ -121,6 +121,7 @@ func addBodyTex(state *SimState, name string, pos, vel rl.Vector3, mass float64,
 		IsStar:        isStar,
 		Trail:         make([]rl.Vector3, 0, 100),
 		TextureType:   texType,
+		CelestialIcon: DetermineCelestialIcon(name, isStar, false, false, mass, texType),
 		RotationAngle: rand.Float32() * 360.0,
 		RotationSpeed: rotSpeed,
 	}
@@ -381,7 +382,7 @@ func loadMilkyWayCluster(state *SimState, cfg *Config, g float64) {
 			col = rl.NewColor(255, 230, 160, 255) // Yellow-white star
 			texType = TextureSun
 		} else {
-			col = rl.NewColor(255, 120, 80, 255)  // Red dwarf
+			col = rl.NewColor(255, 120, 80, 255) // Red dwarf
 			texType = TextureSun
 		}
 
@@ -412,7 +413,7 @@ func loadRelativityRosette(state *SimState, cfg *Config, g float64) {
 	rp := float32(12.0)
 	ra := float32(42.0)
 	a := (rp + ra) * 0.5
-	vPeri := float32(math.Sqrt(g * bhMass * float64((2.0/rp) - (1.0/a))))
+	vPeri := float32(math.Sqrt(g * bhMass * float64((2.0/rp)-(1.0/a))))
 
 	addBodyTex(state, "Relativistic Planet S2",
 		rl.NewVector3(rp, 0, 0),
@@ -423,7 +424,7 @@ func loadRelativityRosette(state *SimState, cfg *Config, g float64) {
 	rp2 := float32(18.0)
 	ra2 := float32(52.0)
 	a2 := (rp2 + ra2) * 0.5
-	vPeri2 := float32(math.Sqrt(g * bhMass * float64((2.0/rp2) - (1.0/a2))))
+	vPeri2 := float32(math.Sqrt(g * bhMass * float64((2.0/rp2)-(1.0/a2))))
 
 	addBodyTex(state, "Inner Precessor",
 		rl.NewVector3(0, 3.0, rp2),
@@ -463,9 +464,10 @@ func loadRocheDisruption(state *SimState, cfg *Config, g float64) {
 
 // CreateBodyTemplate creates a ready-to-launch body based on SpawnType
 func CreateBodyTemplate(spawnType SpawnType, pos, vel rl.Vector3, id int64) *Body {
+	var b *Body
 	switch spawnType {
 	case SpawnEarth:
-		return &Body{
+		b = &Body{
 			ID:            id,
 			Name:          "Terrestrial Planet",
 			Position:      pos,
@@ -481,7 +483,7 @@ func CreateBodyTemplate(spawnType SpawnType, pos, vel rl.Vector3, id int64) *Bod
 			RotationSpeed: 1.2,
 		}
 	case SpawnMoon:
-		return &Body{
+		b = &Body{
 			ID:            id,
 			Name:          "Moon / Asteroid",
 			Position:      pos,
@@ -497,7 +499,7 @@ func CreateBodyTemplate(spawnType SpawnType, pos, vel rl.Vector3, id int64) *Bod
 			RotationSpeed: 0.8,
 		}
 	case SpawnGasGiant:
-		return &Body{
+		b = &Body{
 			ID:            id,
 			Name:          "Gas Giant",
 			Position:      pos,
@@ -513,7 +515,7 @@ func CreateBodyTemplate(spawnType SpawnType, pos, vel rl.Vector3, id int64) *Bod
 			RotationSpeed: 2.2,
 		}
 	case SpawnIceGiant:
-		return &Body{
+		b = &Body{
 			ID:              id,
 			Name:            "Ice Giant",
 			Position:        pos,
@@ -531,7 +533,7 @@ func CreateBodyTemplate(spawnType SpawnType, pos, vel rl.Vector3, id int64) *Bod
 			RotationSpeed:   1.6,
 		}
 	case SpawnStar:
-		return &Body{
+		b = &Body{
 			ID:            id,
 			Name:          "Protostar",
 			Position:      pos,
@@ -547,7 +549,7 @@ func CreateBodyTemplate(spawnType SpawnType, pos, vel rl.Vector3, id int64) *Bod
 			RotationSpeed: 0.5,
 		}
 	case SpawnRedGiant:
-		return &Body{
+		b = &Body{
 			ID:            id,
 			Name:          "Red Supergiant",
 			Position:      pos,
@@ -563,7 +565,7 @@ func CreateBodyTemplate(spawnType SpawnType, pos, vel rl.Vector3, id int64) *Bod
 			RotationSpeed: 0.3,
 		}
 	case SpawnWhiteDwarf:
-		return &Body{
+		b = &Body{
 			ID:            id,
 			Name:          "White Dwarf",
 			Position:      pos,
@@ -579,7 +581,7 @@ func CreateBodyTemplate(spawnType SpawnType, pos, vel rl.Vector3, id int64) *Bod
 			RotationSpeed: 3.0,
 		}
 	case SpawnNeutronStar:
-		return &Body{
+		b = &Body{
 			ID:            id,
 			Name:          "Relativistic Pulsar",
 			Position:      pos,
@@ -596,7 +598,7 @@ func CreateBodyTemplate(spawnType SpawnType, pos, vel rl.Vector3, id int64) *Bod
 			RotationSpeed: 6.5,
 		}
 	case SpawnBlackHole:
-		return &Body{
+		b = &Body{
 			ID:            id,
 			Name:          "Micro Black Hole",
 			Position:      pos,
@@ -612,7 +614,7 @@ func CreateBodyTemplate(spawnType SpawnType, pos, vel rl.Vector3, id int64) *Bod
 			RotationSpeed: 0.8,
 		}
 	case SpawnDwarfPlanet:
-		return &Body{
+		b = &Body{
 			ID:            id,
 			Name:          "Dwarf Planet",
 			Position:      pos,
@@ -628,7 +630,7 @@ func CreateBodyTemplate(spawnType SpawnType, pos, vel rl.Vector3, id int64) *Bod
 			RotationSpeed: 0.9,
 		}
 	case SpawnComet:
-		return &Body{
+		b = &Body{
 			ID:            id,
 			Name:          "Icy Comet",
 			Position:      pos,
@@ -645,7 +647,7 @@ func CreateBodyTemplate(spawnType SpawnType, pos, vel rl.Vector3, id int64) *Bod
 			RotationSpeed: 1.1,
 		}
 	case SpawnAsteroidRing:
-		return &Body{
+		b = &Body{
 			ID:            id,
 			Name:          "Asteroid Swarm",
 			Position:      pos,
@@ -661,7 +663,7 @@ func CreateBodyTemplate(spawnType SpawnType, pos, vel rl.Vector3, id int64) *Bod
 			RotationSpeed: 1.0,
 		}
 	default:
-		return &Body{
+		b = &Body{
 			ID:            id,
 			Name:          "New Body",
 			Position:      pos,
@@ -677,6 +679,10 @@ func CreateBodyTemplate(spawnType SpawnType, pos, vel rl.Vector3, id int64) *Bod
 			RotationSpeed: 1.0,
 		}
 	}
+	if b != nil {
+		b.CelestialIcon = DetermineCelestialIcon(b.Name, b.IsStar, b.IsPulsar, b.IsComet, b.Mass, b.TextureType)
+	}
+	return b
 }
 
 // loadSolarSystemGrand populates full Solar System with planets, asteroid belt, moons & comets
@@ -892,46 +898,20 @@ func loadLagrangeTrojans(state *SimState, cfg *Config, g float64) {
 		pts[4].Position, pts[4].Velocity,
 		0.01, 0.45, rl.NewColor(255, 180, 120, 255), false, false, TextureMoon, 1.0)
 
-	// L4 Trojan Swarm: 16 asteroids with varied libration amplitudes (stable tadpole orbits)
-	for i := 0; i < 16; i++ {
-		offsetAngle := (float64(i%4) - 1.5) * 0.04
-		offsetR := (float64(i/4) - 1.5) * 1.4
-		ang := -math.Pi/3.0 + offsetAngle
-		r := R + offsetR
-		x := float32(r * math.Cos(ang))
-		z := float32(r * math.Sin(ang))
-		vx := float32(-float64(z) * omega)
-		vz := float32(float64(x) * omega)
+	// L4 Trojan Swarm: 16 asteroids with authentic stable tadpole libration orbits
+	SpawnLagrangeSwarm(state, cfg, sun, zeus, pts[3], 16)
 
-		addBodyTex(state, fmt.Sprintf("Trojan #%d (L4 Tadpole)", i+1),
-			rl.NewVector3(x, float32((i%3)-1)*0.2, z),
-			rl.NewVector3(vx, 0, vz),
-			0.005, 0.35, rl.NewColor(140, 200, 255, 255), false, false, TextureMoon, 1.0)
-	}
-
-	// L5 Greek Swarm: 16 asteroids with varied libration amplitudes (stable tadpole orbits)
-	for i := 0; i < 16; i++ {
-		offsetAngle := (float64(i%4) - 1.5) * 0.04
-		offsetR := (float64(i/4) - 1.5) * 1.4
-		ang := math.Pi/3.0 + offsetAngle
-		r := R + offsetR
-		x := float32(r * math.Cos(ang))
-		z := float32(r * math.Sin(ang))
-		vx := float32(-float64(z) * omega)
-		vz := float32(float64(x) * omega)
-
-		addBodyTex(state, fmt.Sprintf("Greek #%d (L5 Tadpole)", i+1),
-			rl.NewVector3(x, float32((i%3)-1)*0.2, z),
-			rl.NewVector3(vx, 0, vz),
-			0.005, 0.35, rl.NewColor(255, 190, 130, 255), false, false, TextureMoon, 1.0)
-	}
+	// L5 Greek Swarm: 16 asteroids with authentic stable tadpole libration orbits
+	SpawnLagrangeSwarm(state, cfg, sun, zeus, pts[4], 16)
 
 	// Horseshoe Libration Asteroid (Cruithne-type co-orbital transitioning around L4, L3, L5)
 	horseR := R + 1.2
 	horseSpd := float32(math.Sqrt((g * m1) / horseR))
+	angHorse := math.Pi * 0.9
+	// Orbiting in same clockwise direction as Zeus (-Z at +X)
 	addBodyTex(state, "Cruithne (Horseshoe Libration)",
-		rl.NewVector3(float32(horseR*math.Cos(math.Pi*0.9)), 0, float32(horseR*math.Sin(math.Pi*0.9))),
-		rl.NewVector3(-horseSpd*float32(math.Sin(math.Pi*0.9)), 0, horseSpd*float32(math.Cos(math.Pi*0.9))),
+		rl.NewVector3(float32(horseR*math.Cos(angHorse)), 0, float32(horseR*math.Sin(angHorse))),
+		rl.NewVector3(horseSpd*float32(math.Sin(angHorse)), 0, -horseSpd*float32(math.Cos(angHorse))),
 		0.002, 0.38, rl.NewColor(210, 255, 180, 255), false, false, TextureMoon, 1.0)
 }
 
@@ -943,7 +923,11 @@ func loadRealScaleSolarSystem(state *SimState, cfg *Config, g float64) {
 	cfg.Softening = 0.01
 	cfg.SubSteps = 5
 	cfg.Integrator = IntegratorYoshida4
-	cfg.Show2DViewport = true // Enable 2D tactical map by default for large-scale solar system
+	cfg.Show2DViewport = true    // Enable 2D tactical map by default for large-scale solar system
+	cfg.Show2DIcons = false      // Clear circles mode by default; toggle ON via [ICON] button
+	cfg.ShowPotentialGrid = true // Enable 3D Spacetime grid to visualize planetary gravity wells
+	cfg.SpacetimeScale = 5.6     // Scale grid to cover full astronomical solar system out to Neptune & Pluto (span: 8,400 units)
+	cfg.SpacetimeResolution = 96 // High-fidelity grid resolution
 
 	sunMass := 10000.0
 	sunRad := float32(4.5)
@@ -1104,7 +1088,7 @@ func loadRealScaleSolarSystem(state *SimState, cfg *Config, g float64) {
 	comet.IsComet = true
 
 	// 12. Interstellar Voyager 1 Probe
-	vEsc := float32(math.Sqrt((2.0 * g * sunMass) / 4500.0) * 1.35)
+	vEsc := float32(math.Sqrt((2.0*g*sunMass)/4500.0) * 1.35)
 	addBodyTex(state, "Voyager 1 (Interstellar Probe)",
 		rl.NewVector3(4500.0, 180.0, 1200.0),
 		rl.NewVector3(vEsc*0.9, vEsc*0.35, vEsc*0.25),
@@ -1891,3 +1875,39 @@ func SpawnCollapseCloud(state *SimState, pos, vel rl.Vector3, count int) {
 	}
 }
 
+// SpawnPresetAtLocation spawns the currently selected preset at the given world position and launch velocity
+func SpawnPresetAtLocation(state *SimState, cfg *Config, pos, vel rl.Vector3) {
+	if state.SpawnPreset == SpawnAsteroidRing {
+		for a := 0; a < 16; a++ {
+			ang := float64(a) * (2.0 * math.Pi / 16.0)
+			r := float32(2.5 + float64(a%3)*0.8)
+			p := rl.NewVector3(
+				pos.X+r*float32(math.Cos(ang)),
+				pos.Y+float32((a%3)-1)*0.2,
+				pos.Z+r*float32(math.Sin(ang)),
+			)
+			v := rl.NewVector3(
+				vel.X-float32(math.Sin(ang))*2.5,
+				vel.Y,
+				vel.Z+float32(math.Cos(ang))*2.5,
+			)
+			newBody := CreateBodyTemplate(SpawnMoon, p, v, state.NextID)
+			newBody.Name = fmt.Sprintf("Belt Asteroid #%d", state.NextID)
+			newBody.Radius = 0.25
+			newBody.Mass = 0.005
+			state.NextID++
+			state.Bodies = append(state.Bodies, newBody)
+		}
+	} else if state.SpawnPreset == SpawnStarCluster50 {
+		SpawnStarCluster(state, pos, vel, 50)
+	} else if state.SpawnPreset == SpawnMiniGalaxy150 {
+		SpawnMiniGalaxy(state, pos, vel, cfg.G)
+	} else if state.SpawnPreset == SpawnCollapseCloud100 {
+		SpawnCollapseCloud(state, pos, vel, 100)
+	} else {
+		newBody := CreateBodyTemplate(state.SpawnPreset, pos, vel, state.NextID)
+		state.NextID++
+		state.Bodies = append(state.Bodies, newBody)
+		state.SelectedBodyID = newBody.ID
+	}
+}

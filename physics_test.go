@@ -341,4 +341,3 @@ func TestYoshida4thOrderEnergyConservation(t *testing.T) {
 		t.Fatalf("Yoshida 4th-order energy drift too large: %.6f%%", errRatio*100)
 	}
 }
-

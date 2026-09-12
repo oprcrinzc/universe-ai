@@ -102,6 +102,18 @@ func (c *OrbitCamera) Update(state *SimState, cfg *Config, uiHandledMouse bool) 
 		} else {
 			state.FollowSelected = false
 		}
+	} else if state.FollowSelected && state.SelectedLagrangeIndex > 0 {
+		primary, secondary := GetLagrangePair(state)
+		if primary != nil && secondary != nil {
+			pts := ComputeLagrangePoints(primary, secondary, cfg.G)
+			idx := state.SelectedLagrangeIndex - 1
+			if idx >= 0 && idx < 5 {
+				ptPos := pts[idx].Position
+				c.Target.X += (ptPos.X - c.Target.X) * 0.15
+				c.Target.Y += (ptPos.Y - c.Target.Y) * 0.15
+				c.Target.Z += (ptPos.Z - c.Target.Z) * 0.15
+			}
+		}
 	} else if state.FollowBarycenter && len(state.Bodies) > 0 {
 		var com rl.Vector3
 		var totM float64

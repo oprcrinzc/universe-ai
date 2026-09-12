@@ -27,8 +27,8 @@ func Render3DScene(state *SimState, cfg *Config, camera *OrbitCamera) {
 		rl.DrawGrid(60, 4.0)
 	}
 
-	// 2b. Draw 3D Spacetime Curvature Potential Grid
-	if cfg.ShowPotentialGrid {
+	// 2b. Draw 3D Spacetime Curvature Potential Grid and/or Gravitational Wave Metric Ripples
+	if cfg.ShowPotentialGrid || cfg.ShowGravitationalWaves {
 		drawSpacetimePotentialGrid(state, cfg, camera)
 	}
 
@@ -106,9 +106,9 @@ func Render3DScene(state *SimState, cfg *Config, camera *OrbitCamera) {
 			rotRad := float64(b.RotationAngle) * (math.Pi / 180.0)
 			tilt := 0.35 // magnetic axis inclination
 			jetDir := rl.NewVector3(
-				float32(math.Sin(tilt) * math.Cos(rotRad)),
+				float32(math.Sin(tilt)*math.Cos(rotRad)),
 				float32(math.Cos(tilt)),
-				float32(math.Sin(tilt) * math.Sin(rotRad)),
+				float32(math.Sin(tilt)*math.Sin(rotRad)),
 			)
 			jetLen := b.Radius * 14.0
 
@@ -277,8 +277,8 @@ var (
 	gridColorBuf []rl.Color
 )
 
-// StaticBaseSpacetimeSpan defines the fixed, invariant world span of the spacetime curvature grid
-const StaticBaseSpacetimeSpan float32 = 300.0
+// StaticBaseSpacetimeSpan defines the fixed, invariant world span of the spacetime curvature grid (5x expanded: 1,500 units)
+const StaticBaseSpacetimeSpan float32 = 1500.0
 
 // getStaticSpacetimeSpan returns the invariant global physical span of the spacetime grid, scaled only by user multiplier
 func getStaticSpacetimeSpan(cfg *Config) float32 {
@@ -289,13 +289,122 @@ func getStaticSpacetimeSpan(cfg *Config) float32 {
 	return StaticBaseSpacetimeSpan * scale
 }
 
+// SpacetimeResolutions defines user-selectable subdivisions per axis for the spacetime grid
+var SpacetimeResolutions = []int{32, 48, 64, 80, 96, 120, 160, 200, 256, 384, 512}
+
+// DecreaseResolution steps the spacetime curvature grid resolution down by one tier
+func DecreaseResolution(cfg *Config) {
+	current := cfg.SpacetimeResolution
+	if current <= 0 {
+		current = 120
+	}
+	target := SpacetimeResolutions[0]
+	for i := len(SpacetimeResolutions) - 1; i >= 0; i-- {
+		if SpacetimeResolutions[i] < current {
+			target = SpacetimeResolutions[i]
+			break
+		}
+	}
+	cfg.SpacetimeResolution = target
+	numVerts := (target + 1) * (target + 1)
+	cfg.NotificationText = fmt.Sprintf("Spacetime Grid Resolution: %dx%d (%d Vertices)", target, target, numVerts)
+	cfg.NotificationTimer = 2.2
+}
+
+// IncreaseResolution steps the spacetime curvature grid resolution up by one tier
+func IncreaseResolution(cfg *Config) {
+	current := cfg.SpacetimeResolution
+	if current <= 0 {
+		current = 120
+	}
+	target := SpacetimeResolutions[len(SpacetimeResolutions)-1]
+	for i := 0; i < len(SpacetimeResolutions); i++ {
+		if SpacetimeResolutions[i] > current {
+			target = SpacetimeResolutions[i]
+			break
+		}
+	}
+	cfg.SpacetimeResolution = target
+	numVerts := (target + 1) * (target + 1)
+	cfg.NotificationText = fmt.Sprintf("Spacetime Grid Resolution: %dx%d (%d Vertices)", target, target, numVerts)
+	cfg.NotificationTimer = 2.2
+}
+
+// Heatmap2DResolutions defines the progressive resolution tiers for the 2D gravitational heatmap (columns)
+var Heatmap2DResolutions = []int{16, 24, 32, 48, 64, 80, 96, 128, 160, 200}
+
+func getHeatmapTierName(res int) string {
+	switch {
+	case res <= 16:
+		return "Low / 16 (Fast)"
+	case res <= 24:
+		return "Medium-Low / 24"
+	case res <= 32:
+		return "Balanced / 32"
+	case res <= 48:
+		return "Standard / 48"
+	case res <= 64:
+		return "High Detail / 64"
+	case res <= 80:
+		return "Very High / 80"
+	case res <= 96:
+		return "Ultra / 96"
+	case res <= 128:
+		return "Extreme / 128"
+	case res <= 160:
+		return "Super Sampled / 160"
+	default:
+		return "Max Quality / 200"
+	}
+}
+
+// DecreaseHeatmap2DResolution steps the 2D gravitational heatmap resolution down by one tier
+func DecreaseHeatmap2DResolution(cfg *Config) {
+	current := cfg.Heatmap2DResolution
+	if current <= 0 {
+		current = 64
+	}
+	target := Heatmap2DResolutions[0]
+	for i := len(Heatmap2DResolutions) - 1; i >= 0; i-- {
+		if Heatmap2DResolutions[i] < current {
+			target = Heatmap2DResolutions[i]
+			break
+		}
+	}
+	cfg.Heatmap2DResolution = target
+	cfg.NotificationText = fmt.Sprintf("2D Heatmap Resolution: %d Columns (%s)", target, getHeatmapTierName(target))
+	cfg.NotificationTimer = 2.2
+}
+
+// IncreaseHeatmap2DResolution steps the 2D gravitational heatmap resolution up by one tier
+func IncreaseHeatmap2DResolution(cfg *Config) {
+	current := cfg.Heatmap2DResolution
+	if current <= 0 {
+		current = 64
+	}
+	target := Heatmap2DResolutions[len(Heatmap2DResolutions)-1]
+	for i := 0; i < len(Heatmap2DResolutions); i++ {
+		if Heatmap2DResolutions[i] > current {
+			target = Heatmap2DResolutions[i]
+			break
+		}
+	}
+	cfg.Heatmap2DResolution = target
+	cfg.NotificationText = fmt.Sprintf("2D Heatmap Resolution: %d Columns (%s)", target, getHeatmapTierName(target))
+	cfg.NotificationTimer = 2.2
+}
+
 // drawSpacetimePotentialGrid renders an Einsteinian gravitational potential well grid on the horizontal plane
 func drawSpacetimePotentialGrid(state *SimState, cfg *Config, camera *OrbitCamera) {
 	_ = camera // Spacetime grid is anchored in global world coordinates; camera does not shift or stretch it!
 
 	res := cfg.SpacetimeResolution
-	if res < 36 {
-		res = 120 // Ultra-high-resolution default: 120x120 subdivisions (14,641 vertices)
+	if res <= 0 {
+		res = 120 // Default: 120x120 subdivisions (14,641 vertices)
+	} else if res < 16 {
+		res = 16
+	} else if res > 512 {
+		res = 512
 	}
 
 	totalSpan := getStaticSpacetimeSpan(cfg)
@@ -306,8 +415,17 @@ func drawSpacetimePotentialGrid(state *SimState, cfg *Config, camera *OrbitCamer
 	baseX := float32(0.0)
 	baseZ := float32(0.0)
 
+	// Determine system mass scale
+	var maxMass float64 = 1.0
+	for _, b := range state.Bodies {
+		if b.Mass > maxMass {
+			maxMass = b.Mass
+		}
+	}
+	minSignifMass := math.Max(0.0001, maxMass*1e-7)
+
 	// Gather celestial bodies that curve spacetime
-	heavyBodies := make([]*Body, 0, 32)
+	heavyBodies := make([]*Body, 0, 64)
 	selectedIncluded := false
 
 	// 1. Always prioritize the currently selected body so its gravity well is never missing
@@ -322,18 +440,19 @@ func drawSpacetimePotentialGrid(state *SimState, cfg *Config, camera *OrbitCamer
 	}
 
 	// 2. Include all major planets, stars, black holes, and significant masses
-	if len(state.Bodies) <= 50 {
-		// In solar systems and standard scenes, include all planets (Earth, Mars, Venus, etc.) and moons
+	if len(state.Bodies) <= 80 {
 		for _, b := range state.Bodies {
 			if selectedIncluded && b.ID == state.SelectedBodyID {
 				continue
 			}
-			if b.Mass >= 0.05 || b.IsStar || b.TextureType == TextureBlackHole {
+			if b.Mass >= minSignifMass || b.IsStar || b.TextureType == TextureBlackHole {
 				heavyBodies = append(heavyBodies, b)
+				if len(heavyBodies) >= 64 {
+					break
+				}
 			}
 		}
 	} else {
-		// In massive swarms (10K particles), include stars, black holes, and anchors up to 32 bodies
 		for _, b := range state.Bodies {
 			if selectedIncluded && b.ID == state.SelectedBodyID {
 				continue
@@ -350,21 +469,67 @@ func drawSpacetimePotentialGrid(state *SimState, cfg *Config, camera *OrbitCamer
 		heavyBodies = append(heavyBodies, state.Bodies[0])
 	}
 
-	// Precompute body scaled masses once per frame to eliminate millions of math.Pow calls
+	// Precompute body parameters for multi-scale general relativistic curvature (only if Spacetime is enabled)
 	type precomputedBody struct {
-		x, z        float32
-		scaledMassG float64
+		x, y, z    float32
+		bodyType   int // 0: minor/planet, 1: star, 2: white dwarf, 3: neutron star/pulsar, 4: black hole
+		wellDepth  float32
+		wellRadius float32
+		cutoffSq   float32
 	}
-	sources := make([]precomputedBody, len(heavyBodies))
-	for k, b := range heavyBodies {
-		sm := math.Pow(b.Mass, 0.48) * 8.0
-		if b.ID == state.SelectedBodyID {
-			sm *= 1.35 // Extra distinct well for inspected body
-		}
-		sources[k] = precomputedBody{
-			x:           b.Position.X,
-			z:           b.Position.Z,
-			scaledMassG: cfg.G * sm,
+	var sources []precomputedBody
+	if cfg.ShowPotentialGrid {
+		sources = make([]precomputedBody, len(heavyBodies))
+		for k, b := range heavyBodies {
+			bType := 0
+			var wDepth float32
+			var wRad float32
+			var cSq float32
+
+			if b.TextureType == TextureBlackHole {
+				// Black Hole: Deep asymptotic Schwarzschild funnel with sharp event horizon
+				bType = 4
+				wDepth = float32(math.Min(58.0, 44.0+math.Log10(b.Mass+1.0)*3.0))
+				wRad = float32(math.Max(float64(b.Radius*1.5), 2.2))
+				cSq = wRad * wRad * 120.0
+			} else if b.TextureType == TextureNeutronStar || b.IsPulsar {
+				// Neutron Star / Pulsar: Extremely compact superdense funnel
+				bType = 3
+				wDepth = 38.0
+				wRad = float32(math.Max(float64(b.Radius*1.8), 2.5))
+				cSq = wRad * wRad * 100.0
+			} else if b.TextureType == TextureWhiteDwarf {
+				// White Dwarf: Dense degenerate stellar remnant
+				bType = 2
+				wDepth = 32.0
+				wRad = float32(math.Max(float64(b.Radius*2.0), 2.8))
+				cSq = wRad * wRad * 90.0
+			} else if b.IsStar || b.Mass >= 200.0 {
+				// Stellar bowl (Sun, Red Giant, Protostar)
+				bType = 1
+				wDepth = float32(math.Min(35.0, 22.0+math.Pow(b.Mass/1000.0, 0.3)*3.0))
+				wRad = float32(math.Max(float64(b.Radius*3.5), float64(totalSpan*0.035)))
+				cSq = 1e12 // Stars have global reach across wide domain
+			} else {
+				// Planets and minor celestial bodies (Earth, Gas Giant, Moon, Comet, Asteroid)
+				bType = 0
+				wDepth = float32(math.Min(18.0, math.Pow(b.Mass, 0.45)*4.2))
+				if b.ID == state.SelectedBodyID {
+					wDepth *= 1.2
+				}
+				wRad = float32(math.Max(float64(b.Radius*2.4), float64(spacing*1.2)))
+				cSq = wRad * wRad * 80.0
+			}
+
+			sources[k] = precomputedBody{
+				x:          b.Position.X,
+				y:          b.Position.Y,
+				z:          b.Position.Z,
+				bodyType:   bType,
+				wellDepth:  wDepth,
+				wellRadius: wRad,
+				cutoffSq:   cSq,
+			}
 		}
 	}
 
@@ -374,28 +539,148 @@ func drawSpacetimePotentialGrid(state *SimState, cfg *Config, camera *OrbitCamer
 		gridColorBuf = make([]rl.Color, totalPoints)
 	}
 
-	// Calculate vertex depths and colors
+	curTime := rl.GetTime()
+	gwActive := cfg.ShowGravitationalWaves
+
+	clampU8 := func(v int) uint8 {
+		if v > 255 {
+			return 255
+		}
+		if v < 0 {
+			return 0
+		}
+		return uint8(v)
+	}
+
+	// Calculate vertex depths, relativistic time dilation colors, and GW ripples
 	idx := 0
 	for i := 0; i <= res; i++ {
 		gx := baseX - halfDim + float32(i)*spacing
 		for j := 0; j <= res; j++ {
 			gz := baseZ - halfDim + float32(j)*spacing
-			var potential float64
-			for k := 0; k < len(sources); k++ {
-				dx := float64(gx - sources[k].x)
-				dz := float64(gz - sources[k].z)
-				r := math.Sqrt(dx*dx + dz*dz + 1.8)
-				potential += sources[k].scaledMassG / r
+			var totalDepth float32 = 0.0
+
+			// 1. Spacetime Curvature Potential Wells (Only computed if ShowPotentialGrid is ON)
+			if cfg.ShowPotentialGrid {
+				for k := 0; k < len(sources); k++ {
+					dx := gx - sources[k].x
+					dz := gz - sources[k].z
+					dy := sources[k].y // accounts for body vertical height Y in 3D
+					rSq := dx*dx + dz*dz + dy*dy*0.75
+
+					// Spatial influence cutoff: skip negligible contributions for 4x performance boost
+					if rSq > sources[k].cutoffSq {
+						continue
+					}
+
+					switch sources[k].bodyType {
+					case 4:
+						// Black Hole: steep asymptotic Schwarzschild throat
+						rs2 := sources[k].wellRadius * sources[k].wellRadius
+						throat := float32(math.Pow(float64(rs2/(rSq+rs2)), 1.35))
+						totalDepth -= sources[k].wellDepth * throat
+					case 3, 2:
+						// Compact relativistic remnant (Neutron star / White dwarf)
+						rw2 := sources[k].wellRadius * sources[k].wellRadius
+						funnel := float32(math.Pow(float64(rw2/(rSq+rw2)), 1.15))
+						totalDepth -= sources[k].wellDepth * funnel
+					case 1:
+						// Star: broad gravitational bowl
+						r := float32(math.Sqrt(float64(rSq) + 1.8))
+						rScale := sources[k].wellRadius
+						starFract := rScale / (r + rScale)
+						totalDepth -= sources[k].wellDepth * starFract
+					default:
+						// Planet / Minor: localized Lorentzian depression
+						radSq := sources[k].wellRadius * sources[k].wellRadius
+						wellFract := radSq / (rSq + radSq)
+						totalDepth -= sources[k].wellDepth * wellFract
+					}
+				}
+
+				if totalDepth < -52.0 {
+					totalDepth = -52.0
+				}
 			}
-			depth := -float32(math.Min(38.0, potential*0.14))
-			depthRatio := float32(math.Min(1.0, math.Abs(float64(depth))/28.0))
-			col := rl.NewColor(
-				uint8(35+depthRatio*220),
-				uint8(85+depthRatio*140),
-				uint8(170-depthRatio*95),
-				uint8(85+depthRatio*135),
-			)
-			gridDepthBuf[idx] = depth
+
+			// 2. Dynamic Gravitational Wave Metric Ripples (Only computed if ShowGravitationalWaves is ON)
+			var gwDisp, gwIntensity float32
+			if gwActive {
+				gwDisp, gwIntensity = ComputeGravitationalWaveDisplacement(state, cfg, gx, gz, curTime)
+				totalDepth += gwDisp
+			}
+
+			// 3. Adaptive Vertex Coloring
+			var col rl.Color
+			if cfg.ShowPotentialGrid {
+				depthRatio := float32(math.Min(1.0, math.Abs(float64(totalDepth))/36.0))
+				// Relativistic time dilation coloring:
+				// Vacuum (flat): deep cosmos blue
+				// Mid-depth (planetary wells): vivid teal/emerald
+				// Extreme depth (star/black hole core): luminous gold/magenta
+				if depthRatio < 0.4 {
+					t := depthRatio / 0.4
+					col = rl.NewColor(
+						uint8(25+t*25),
+						uint8(70+t*130),
+						uint8(160+t*50),
+						uint8(80+t*80),
+					)
+				} else if depthRatio < 0.75 {
+					t := (depthRatio - 0.4) / 0.35
+					col = rl.NewColor(
+						uint8(50+t*190),
+						uint8(200+t*20),
+						uint8(210-t*150),
+						uint8(160+t*60),
+					)
+				} else {
+					t := (depthRatio - 0.75) / 0.25
+					col = rl.NewColor(
+						uint8(240+t*15),
+						uint8(220-t*90),
+						uint8(60+t*120),
+						uint8(220+t*35),
+					)
+				}
+
+				// Gravitational Wave crest & trough luminous interference fringe
+				if gwActive && gwIntensity > 0.005 {
+					cAdd := int(math.Min(130.0, float64(gwIntensity*70.0)))
+					if gwDisp > 0 {
+						// Crest: vivid cyan / electric turquoise pulse
+						col.G = clampU8(int(col.G) + cAdd)
+						col.B = clampU8(int(col.B) + cAdd*2)
+					} else {
+						// Trough: deep violet / ultraviolet pulse
+						col.R = clampU8(int(col.R) + cAdd*2)
+						col.B = clampU8(int(col.B) + cAdd)
+					}
+				}
+			} else {
+				// Pure Gravitational Waves Mode (Spacetime Potential Wells OFF, GW Ripples ON)
+				amp := float32(math.Min(1.0, math.Abs(float64(gwDisp))/1.8))
+				cAdd := int(amp * 180.0)
+				if gwDisp > 0 {
+					// Wave Crest: glowing electric cyan / neon turquoise
+					col = rl.NewColor(
+						clampU8(24+cAdd/3),
+						clampU8(80+cAdd),
+						clampU8(170+cAdd),
+						clampU8(110+int(amp*135)),
+					)
+				} else {
+					// Wave Trough: vibrant cosmic magenta / violet
+					col = rl.NewColor(
+						clampU8(70+cAdd),
+						clampU8(30+cAdd/4),
+						clampU8(160+cAdd),
+						clampU8(110+int(amp*135)),
+					)
+				}
+			}
+
+			gridDepthBuf[idx] = totalDepth
 			gridColorBuf[idx] = col
 			idx++
 		}
@@ -428,48 +713,137 @@ func drawSpacetimePotentialGrid(state *SimState, cfg *Config, camera *OrbitCamer
 			rl.DrawLine3D(p1, p2, gridColorBuf[idx1])
 		}
 	}
+
+	// Local High-Definition Spacetime Trampoline for selected body (planet, star, pulsar, or black hole)
+	if state.SelectedBodyID != -1 {
+		var sel *Body
+		for _, b := range state.Bodies {
+			if b.ID == state.SelectedBodyID {
+				sel = b
+				break
+			}
+		}
+		if sel != nil {
+			drawLocalBodySpacetimeWell(sel, cfg)
+		}
+	}
 }
 
-// drawGravitationalVectorField displays a high-resolution global 3D grid of local gravitational acceleration vectors
+// drawLocalBodySpacetimeWell renders a localized high-definition Einsteinian spacetime curvature trampoline
+// directly beneath the selected body, enabling close-up inspection of its gravitational potential well.
+func drawLocalBodySpacetimeWell(body *Body, cfg *Config) {
+	const localRes = 24
+	localSpan := float32(math.Max(float64(body.Radius*8.0), 10.0))
+	localSpacing := localSpan / float32(localRes)
+	halfLocal := localSpan * 0.5
+
+	cPos := body.Position
+	baseY := cPos.Y - body.Radius*0.2
+
+	wellRadius := body.Radius * 2.2
+	radSq := wellRadius * wellRadius
+	maxDepth := float32(math.Min(24.0, math.Max(4.0, math.Pow(body.Mass+1.0, 0.35)*5.0)))
+
+	// For black holes: draw event horizon, photon sphere, and ISCO rings
+	if body.TextureType == TextureBlackHole {
+		rs := body.Radius * 1.5
+		rl.DrawCircle3D(rl.NewVector3(cPos.X, baseY-maxDepth*0.9, cPos.Z), rs, rl.NewVector3(0, 1, 0), 0, rl.NewColor(20, 20, 30, 240))
+		rl.DrawCircle3D(rl.NewVector3(cPos.X, baseY-maxDepth*0.6, cPos.Z), rs*1.5, rl.NewVector3(0, 1, 0), 0, rl.NewColor(255, 200, 60, 220))  // Photon Sphere
+		rl.DrawCircle3D(rl.NewVector3(cPos.X, baseY-maxDepth*0.3, cPos.Z), rs*3.0, rl.NewVector3(0, 1, 0), 0, rl.NewColor(120, 220, 255, 180)) // ISCO
+	} else {
+		// Draw concentric geodesic rings
+		pulse := float32(math.Sin(float64(rl.GetTime()*4.0)))*0.5 + 0.5
+		for rIdx := 1; rIdx <= 4; rIdx++ {
+			ringR := body.Radius * float32(rIdx) * 1.6
+			ringY := baseY - maxDepth*(radSq/(ringR*ringR+radSq))
+			ringCol := rl.NewColor(80, 220, 255, uint8(100+rIdx*25))
+			if rIdx == 1 {
+				ringCol = rl.NewColor(255, 215, 60, uint8(160+pulse*60))
+			}
+			rl.DrawCircle3D(rl.NewVector3(cPos.X, ringY, cPos.Z), ringR, rl.NewVector3(0, 1, 0), 0, ringCol)
+		}
+	}
+
+	// Draw localized mesh lines
+	for i := 0; i <= localRes; i++ {
+		lx := -halfLocal + float32(i)*localSpacing
+		for j := 0; j < localRes; j++ {
+			lz1 := -halfLocal + float32(j)*localSpacing
+			lz2 := lz1 + localSpacing
+
+			r1Sq := lx*lx + lz1*lz1
+			r2Sq := lx*lx + lz2*lz2
+			d1 := -maxDepth * (radSq / (r1Sq + radSq))
+			d2 := -maxDepth * (radSq / (r2Sq + radSq))
+
+			p1 := rl.NewVector3(cPos.X+lx, baseY+d1, cPos.Z+lz1)
+			p2 := rl.NewVector3(cPos.X+lx, baseY+d2, cPos.Z+lz2)
+			rl.DrawLine3D(p1, p2, rl.NewColor(60, 190, 240, 160))
+		}
+	}
+
+	for j := 0; j <= localRes; j++ {
+		lz := -halfLocal + float32(j)*localSpacing
+		for i := 0; i < localRes; i++ {
+			lx1 := -halfLocal + float32(i)*localSpacing
+			lx2 := lx1 + localSpacing
+
+			r1Sq := lx1*lx1 + lz*lz
+			r2Sq := lx2*lx2 + lz*lz
+			d1 := -maxDepth * (radSq / (r1Sq + radSq))
+			d2 := -maxDepth * (radSq / (r2Sq + radSq))
+
+			p1 := rl.NewVector3(cPos.X+lx1, baseY+d1, cPos.Z+lz)
+			p2 := rl.NewVector3(cPos.X+lx2, baseY+d2, cPos.Z+lz)
+			rl.DrawLine3D(p1, p2, rl.NewColor(60, 190, 240, 160))
+		}
+	}
+}
+
+// drawGravitationalVectorField renders a true 3D volumetric multi-elevation lattice of gravitational force vectors
 func drawGravitationalVectorField(state *SimState, cfg *Config, camera *OrbitCamera) {
-	_ = camera // Anchored globally at origin (0,0,0) in sync with the spacetime curvature grid
+	_ = camera
 	if len(state.Bodies) == 0 {
 		return
 	}
 
 	totalSpan := getStaticSpacetimeSpan(cfg)
-	const steps = 32 // High resolution: 32x32 = 1,024 3D vectors
-	stepSize := totalSpan / float32(steps-1)
 	halfSpan := totalSpan * 0.5
 
-	baseX := float32(0.0)
-	baseZ := float32(0.0)
+	var maxMass float64 = 1.0
+	for _, b := range state.Bodies {
+		if b.Mass > maxMass {
+			maxMass = b.Mass
+		}
+	}
+	minSignifMass := math.Max(0.0001, maxMass*1e-7)
 
-	// Gather celestial bodies that generate gravitational acceleration
-	heavy := make([]*Body, 0, 32)
-	selectedIncluded := false
+	// Gather heavy bodies
+	heavy := make([]*Body, 0, 48)
 	if state.SelectedBodyID != -1 {
 		for _, b := range state.Bodies {
 			if b.ID == state.SelectedBodyID {
 				heavy = append(heavy, b)
-				selectedIncluded = true
 				break
 			}
 		}
 	}
 
-	if len(state.Bodies) <= 50 {
+	if len(state.Bodies) <= 80 {
 		for _, b := range state.Bodies {
-			if selectedIncluded && b.ID == state.SelectedBodyID {
+			if state.SelectedBodyID != -1 && b.ID == state.SelectedBodyID {
 				continue
 			}
-			if b.Mass >= 0.05 || b.IsStar || b.TextureType == TextureBlackHole {
+			if b.Mass >= minSignifMass || b.IsStar || b.TextureType == TextureBlackHole {
 				heavy = append(heavy, b)
+				if len(heavy) >= 48 {
+					break
+				}
 			}
 		}
 	} else {
 		for _, b := range state.Bodies {
-			if selectedIncluded && b.ID == state.SelectedBodyID {
+			if state.SelectedBodyID != -1 && b.ID == state.SelectedBodyID {
 				continue
 			}
 			if b.Mass >= 15.0 || b.TextureType == TextureBlackHole || b.IsStar {
@@ -500,74 +874,172 @@ func drawGravitationalVectorField(state *SimState, cfg *Config, camera *OrbitCam
 
 	eps2 := float32(cfg.Softening*cfg.Softening + 4.0)
 
-	for ix := 0; ix < steps; ix++ {
-		px := baseX - halfSpan + float32(ix)*stepSize
-		for iz := 0; iz < steps; iz++ {
-			pz := baseZ - halfSpan + float32(iz)*stepSize
-			var gx, gy, gz float32
+	// 3D Volumetric Elevations: Multi-elevation lattice with dense 5-plane configuration
+	yElevation := totalSpan * 0.075
+	var yPlanes []struct {
+		y     float32
+		steps int
+		alpha uint8
+	}
 
-			for k := 0; k < len(sources); k++ {
-				dx := sources[k].x - px
-				dy := sources[k].y - 0
-				dz := sources[k].z - pz
-				distSq := dx*dx + dy*dy + dz*dz + eps2
-				dist := float32(math.Sqrt(float64(distSq)))
-				invDist3 := 1.0 / (distSq * dist)
-				f := sources[k].scaledG * invDist3
-				gx += dx * f
-				gy += dy * f
-				gz += dz * f
-			}
+	densityScale := float32(1.0)
+	if cfg.DenseVectorField {
+		// Ultra-Dense 5-elevation volumetric lattice: 3,448 vectors
+		densityScale = 0.72
+		yPlanes = []struct {
+			y     float32
+			steps int
+			alpha uint8
+		}{
+			{-yElevation * 1.8, 20, 115},
+			{-yElevation * 0.9, 26, 165},
+			{0.0, 36, 245}, // High-resolution primary orbital plane: 36x36 = 1,296 vectors
+			{yElevation * 0.9, 26, 165},
+			{yElevation * 1.8, 20, 115},
+		}
+	} else {
+		// Standard 3-elevation volumetric lattice: 1,432 vectors
+		densityScale = 0.95
+		yPlanes = []struct {
+			y     float32
+			steps int
+			alpha uint8
+		}{
+			{-yElevation, 18, 145},
+			{0.0, 28, 235},
+			{yElevation, 18, 145},
+		}
+	}
 
-			gLen := float32(math.Sqrt(float64(gx*gx + gy*gy + gz*gz)))
-			if gLen > 0.0001 {
-				dirX := gx / gLen
-				dirY := gy / gLen
-				dirZ := gz / gLen
+	draw3DArrow := func(pStart rl.Vector3, dirX, dirY, dirZ, arrowLen float32, col rl.Color) {
+		pEnd := rl.NewVector3(pStart.X+dirX*arrowLen, pStart.Y+dirY*arrowLen, pStart.Z+dirZ*arrowLen)
+		rl.DrawLine3D(pStart, pEnd, col)
 
-				// Logarithmic / sigmoid length scaling: min 1.2 units up to 4.5 units
-				arrowLen := 1.2 + 3.3*(gLen/(gLen+0.35))
-				pStart := rl.NewVector3(px, 0, pz)
-				pEnd := rl.NewVector3(px+dirX*arrowLen, dirY*arrowLen, pz+dirZ*arrowLen)
+		// 3D orthogonal coordinate frame for 4-fin arrowhead
+		dir := rl.NewVector3(dirX, dirY, dirZ)
+		var up rl.Vector3
+		if float32(math.Abs(float64(dirY))) < 0.9 {
+			up = rl.NewVector3(0, 1, 0)
+		} else {
+			up = rl.NewVector3(1, 0, 0)
+		}
+		u := rl.Vector3Normalize(rl.Vector3CrossProduct(dir, up))
+		v := rl.Vector3CrossProduct(dir, u)
 
-				// Color gradient based on gravitational field strength
-				ratio := float32(math.Min(1.0, math.Max(0.0, (math.Log10(float64(gLen))+2.5)/3.0)))
-				var col rl.Color
-				if ratio < 0.33 {
-					t := ratio / 0.33
-					col = rl.NewColor(
-						uint8(40+t*20),
-						uint8(160+t*60),
-						uint8(255-t*90),
-						uint8(140+t*40),
-					)
-				} else if ratio < 0.66 {
-					t := (ratio - 0.33) / 0.33
-					col = rl.NewColor(
-						uint8(60+t*195),
-						uint8(220-t*20),
-						uint8(165-t*115),
-						uint8(180+t*40),
-					)
-				} else {
-					t := (ratio - 0.66) / 0.34
-					col = rl.NewColor(
-						uint8(255),
-						uint8(200-t*140),
-						uint8(50+t*50),
-						uint8(220+t*35),
-					)
+		wLen := arrowLen * 0.28
+		wSpread := arrowLen * 0.12
+		baseCenter := rl.Vector3Subtract(pEnd, rl.Vector3Scale(dir, wLen))
+
+		w1 := rl.Vector3Add(baseCenter, rl.Vector3Scale(u, wSpread))
+		w2 := rl.Vector3Subtract(baseCenter, rl.Vector3Scale(u, wSpread))
+		w3 := rl.Vector3Add(baseCenter, rl.Vector3Scale(v, wSpread))
+		w4 := rl.Vector3Subtract(baseCenter, rl.Vector3Scale(v, wSpread))
+
+		rl.DrawLine3D(pEnd, w1, col)
+		rl.DrawLine3D(pEnd, w2, col)
+		rl.DrawLine3D(pEnd, w3, col)
+		rl.DrawLine3D(pEnd, w4, col)
+	}
+
+	for _, plane := range yPlanes {
+		steps := plane.steps
+		stepSize := totalSpan / float32(steps-1)
+		py := plane.y
+
+		for ix := 0; ix < steps; ix++ {
+			px := -halfSpan + float32(ix)*stepSize
+			for iz := 0; iz < steps; iz++ {
+				pz := -halfSpan + float32(iz)*stepSize
+
+				var gx, gy, gz float32
+				for k := 0; k < len(sources); k++ {
+					dx := sources[k].x - px
+					dy := sources[k].y - py
+					dz := sources[k].z - pz
+					distSq := dx*dx + dy*dy + dz*dz + eps2
+					dist := float32(math.Sqrt(float64(distSq)))
+					invDist3 := 1.0 / (distSq * dist)
+					f := sources[k].scaledG * invDist3
+					gx += dx * f
+					gy += dy * f
+					gz += dz * f
 				}
 
-				rl.DrawLine3D(pStart, pEnd, col)
+				gLen := float32(math.Sqrt(float64(gx*gx + gy*gy + gz*gz)))
+				if gLen > 0.0001 {
+					dirX := gx / gLen
+					dirY := gy / gLen
+					dirZ := gz / gLen
 
-				// Draw 3D arrowhead wings
-				sideX := -dirZ * 0.28 * arrowLen
-				sideZ := dirX * 0.28 * arrowLen
-				wing1 := rl.NewVector3(pEnd.X-dirX*0.25*arrowLen+sideX*0.4, pEnd.Y-dirY*0.25*arrowLen, pEnd.Z-dirZ*0.25*arrowLen+sideZ*0.4)
-				wing2 := rl.NewVector3(pEnd.X-dirX*0.25*arrowLen-sideX*0.4, pEnd.Y-dirY*0.25*arrowLen, pEnd.Z-dirZ*0.25*arrowLen-sideZ*0.4)
-				rl.DrawLine3D(pEnd, wing1, col)
-				rl.DrawLine3D(pEnd, wing2, col)
+					arrowLen := (1.0 + 3.0*(gLen/(gLen+0.35))) * densityScale
+					pStart := rl.NewVector3(px, py, pz)
+
+					ratio := float32(math.Min(1.0, math.Max(0.0, (math.Log10(float64(gLen))+2.5)/3.0)))
+					var col rl.Color
+					if ratio < 0.33 {
+						t := ratio / 0.33
+						col = rl.NewColor(
+							uint8(40+t*20),
+							uint8(160+t*60),
+							uint8(255-t*90),
+							plane.alpha,
+						)
+					} else if ratio < 0.66 {
+						t := (ratio - 0.33) / 0.33
+						col = rl.NewColor(
+							uint8(60+t*195),
+							uint8(220-t*20),
+							uint8(165-t*115),
+							plane.alpha,
+						)
+					} else {
+						t := (ratio - 0.66) / 0.34
+						col = rl.NewColor(
+							uint8(255),
+							uint8(200-t*140),
+							uint8(50+t*50),
+							plane.alpha,
+						)
+					}
+
+					draw3DArrow(pStart, dirX, dirY, dirZ, arrowLen, col)
+				}
+			}
+		}
+	}
+
+	// 3D Inward Gravitational Inflow Vectors around Selected Body / Stars
+	for _, b := range heavy {
+		if b.IsStar || b.ID == state.SelectedBodyID {
+			rAttract := b.Radius * 3.5
+			if rAttract < 4.0 {
+				rAttract = 4.0
+			}
+			fluxR := rAttract * 1.8
+			fluxLen := rAttract * 0.65
+
+			// 8 spherical radial points pulling inward in 3D
+			angles := []struct{ th, ph float64 }{
+				{0, 0}, {math.Pi * 0.5, 0}, {math.Pi, 0}, {math.Pi * 1.5, 0},
+				{0.78, 0.78}, {2.35, 0.78}, {3.92, -0.78}, {5.49, -0.78},
+			}
+			col := rl.NewColor(255, 200, 60, 210)
+			for _, ang := range angles {
+				cosP := float32(math.Cos(ang.ph))
+				sinP := float32(math.Sin(ang.ph))
+				cosT := float32(math.Cos(ang.th))
+				sinT := float32(math.Sin(ang.th))
+
+				spX := b.Position.X + fluxR*cosT*cosP
+				spY := b.Position.Y + fluxR*sinP
+				spZ := b.Position.Z + fluxR*sinT*cosP
+
+				inX := -cosT * cosP
+				inY := -sinP
+				inZ := -sinT * cosP
+
+				pStart := rl.NewVector3(spX, spY, spZ)
+				draw3DArrow(pStart, inX, inY, inZ, fluxLen, col)
 			}
 		}
 	}
@@ -668,21 +1140,8 @@ func drawScreenLabels(state *SimState, camera *OrbitCamera) {
 // and collinear axis connecting Primary, Secondary, and L1-L5 in 3D space.
 func draw3DLagrangePoints(state *SimState, cfg *Config, camera *OrbitCamera) {
 	_ = camera
-	if len(state.Bodies) < 2 {
-		return
-	}
-
-	var primary, secondary *Body
-	for _, b := range state.Bodies {
-		if primary == nil || b.Mass > primary.Mass {
-			secondary = primary
-			primary = b
-		} else if secondary == nil || b.Mass > secondary.Mass {
-			secondary = b
-		}
-	}
-
-	if primary == nil || secondary == nil || secondary.Mass < 0.001 {
+	primary, secondary := GetLagrangePair(state)
+	if primary == nil || secondary == nil {
 		return
 	}
 
@@ -728,6 +1187,15 @@ func draw3DLagrangePoints(state *SimState, cfg *Config, camera *OrbitCamera) {
 		// Glowing core sphere
 		rl.DrawSphere(p, markerSize*0.3, col)
 
+		// If this point is selected, draw animated pulsating beacon rings!
+		if state.SelectedLagrangeIndex == i+1 {
+			pulse := float32(math.Sin(float64(rl.GetTime()*6.0)))*0.5 + 0.5
+			selR := markerSize * (3.0 + pulse*1.2)
+			rl.DrawCircle3D(p, selR, rl.NewVector3(0, 1, 0), 0, rl.NewColor(col.R, col.G, col.B, 255))
+			rl.DrawCircle3D(p, selR*0.7, rl.NewVector3(0, 1, 0), 0, rl.NewColor(col.R, col.G, col.B, 180))
+			rl.DrawSphere(p, markerSize*0.5, rl.ColorAlpha(col, 0.95))
+		}
+
 		// 3D Wireframe Octahedron (Diamond)
 		s := markerSize
 		top := rl.NewVector3(p.X, p.Y+s, p.Z)
@@ -759,21 +1227,8 @@ func draw3DLagrangePoints(state *SimState, cfg *Config, camera *OrbitCamera) {
 
 // draw3DLagrangeScreenBadges projects HUD tags [L1]-[L5] in 2D screen space above their 3D coordinates
 func draw3DLagrangeScreenBadges(state *SimState, cfg *Config, camera *OrbitCamera) {
-	if len(state.Bodies) < 2 {
-		return
-	}
-
-	var primary, secondary *Body
-	for _, b := range state.Bodies {
-		if primary == nil || b.Mass > primary.Mass {
-			secondary = primary
-			primary = b
-		} else if secondary == nil || b.Mass > secondary.Mass {
-			secondary = b
-		}
-	}
-
-	if primary == nil || secondary == nil || secondary.Mass < 0.001 {
+	primary, secondary := GetLagrangePair(state)
+	if primary == nil || secondary == nil {
 		return
 	}
 
@@ -805,14 +1260,24 @@ func draw3DLagrangeScreenBadges(state *SimState, cfg *Config, camera *OrbitCamer
 
 		tag := labels[i]
 		col := colors[i]
+		isSelected := state.SelectedLagrangeIndex == i+1
+		if isSelected {
+			tag = "★ " + tag
+		}
 		tagW := int32(MeasureTextBoldUI(tag, FontSizeTelemetry)) + 12
 		tagH := int32(18)
 		tagX := int32(screenPos.X) - tagW/2
 		tagY := int32(screenPos.Y) - 18
 
-		rl.DrawRectangle(tagX, tagY, tagW, tagH, rl.NewColor(12, 16, 26, 210))
-		rl.DrawRectangleLines(tagX, tagY, tagW, tagH, rl.Fade(col, 0.8))
-		DrawTextBoldUI(tag, tagX+6, tagY+2, FontSizeTelemetry, col)
+		if isSelected {
+			rl.DrawRectangle(tagX-2, tagY-2, tagW+4, tagH+4, rl.NewColor(20, 45, 80, 240))
+			rl.DrawRectangleLinesEx(rl.NewRectangle(float32(tagX-2), float32(tagY-2), float32(tagW+4), float32(tagH+4)), 1.5, rl.Gold)
+			DrawTextBoldUI(tag, tagX+6, tagY+2, FontSizeTelemetry, rl.Gold)
+		} else {
+			rl.DrawRectangle(tagX, tagY, tagW, tagH, rl.NewColor(12, 16, 26, 210))
+			rl.DrawRectangleLines(tagX, tagY, tagW, tagH, rl.Fade(col, 0.8))
+			DrawTextBoldUI(tag, tagX+6, tagY+2, FontSizeTelemetry, col)
+		}
 	}
 }
 
@@ -837,8 +1302,16 @@ func draw3DGravitationalHeatmapPlane(state *SimState, cfg *Config, camera *Orbit
 		heatmapPlaneColBuf = make([]rl.Color, totalVerts)
 	}
 
+	var maxMass float64 = 1.0
+	for _, b := range state.Bodies {
+		if b.Mass > maxMass {
+			maxMass = b.Mass
+		}
+	}
+	minSignifMass := math.Max(0.0001, maxMass*1e-7)
+
 	// Gather heavy bodies for potential evaluation
-	heavy := make([]*Body, 0, 32)
+	heavy := make([]*Body, 0, 48)
 	if state.SelectedBodyID != -1 {
 		for _, b := range state.Bodies {
 			if b.ID == state.SelectedBodyID {
@@ -848,11 +1321,11 @@ func draw3DGravitationalHeatmapPlane(state *SimState, cfg *Config, camera *Orbit
 		}
 	}
 	for _, b := range state.Bodies {
-		if (state.SelectedBodyID != -1 && b.ID == state.SelectedBodyID) || b.Mass < 0.05 {
+		if (state.SelectedBodyID != -1 && b.ID == state.SelectedBodyID) || b.Mass < minSignifMass {
 			continue
 		}
 		heavy = append(heavy, b)
-		if len(heavy) >= 28 {
+		if len(heavy) >= 48 {
 			break
 		}
 	}
@@ -972,4 +1445,3 @@ func draw3DGravitationalHeatmapPlane(state *SimState, cfg *Config, camera *Orbit
 		}
 	}
 }
-

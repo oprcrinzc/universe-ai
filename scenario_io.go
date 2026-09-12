@@ -270,6 +270,7 @@ func LoadScenarioFromFile(state *SimState, cfg *Config, filePath string) error {
 			RingOuterRadius: b.RingOuter,
 			Trail:           make([]rl.Vector3, 0, 100),
 			TextureType:     stringToTextureType(b.TextureType),
+			CelestialIcon:   DetermineCelestialIcon(b.Name, b.IsStar, b.IsPulsar, b.IsComet, b.Mass, stringToTextureType(b.TextureType)),
 			RotationAngle:   0,
 			RotationSpeed:   b.RotationSpeed,
 		}
@@ -347,7 +348,7 @@ func InitBuiltinScenarios() {
 		m := 2500.0
 		// Exact normalized velocities and positions scaled for our engine
 		x1, y1 := float32(0.97000436*25.0), float32(-0.24308753*25.0)
-		vx3, vy3 := float32(-2.0 * -0.46620531 * 5.0), float32(-2.0 * -0.43236573 * 5.0)
+		vx3, vy3 := float32(-2.0*-0.46620531*5.0), float32(-2.0*-0.43236573*5.0)
 		vx1, vy1 := float32(-0.46620531*5.0), float32(-0.43236573*5.0)
 
 		fig8 := ScenarioFileJSON{
@@ -379,7 +380,7 @@ func InitBuiltinScenarios() {
 	}
 
 	// 3. Roche Limit Breakup Scenario
-		rochePath := "scenarios/roche_breakup.json"
+	rochePath := "scenarios/roche_breakup.json"
 	if _, err := os.Stat(rochePath); os.IsNotExist(err) {
 		rocheScen := ScenarioFileJSON{
 			Version:     "1.0",
@@ -502,7 +503,7 @@ func InitBuiltinScenarios() {
 				ID: idCnt, Name: fmt.Sprintf("Andromeda Star %d", i+1),
 				Position: [3]float32{float32(-45.0 + r*math.Cos(ang)), float32((i%3)*2 - 2), float32(-20.0 + r*math.Sin(ang))},
 				Velocity: [3]float32{float32(1.8 - spd*math.Sin(ang)), 0.2, float32(1.2 + spd*math.Cos(ang))},
-				Mass: 1.0, Radius: 0.5, Color: [4]uint8{160, 210, 255, 255}, TextureType: "moon",
+				Mass:     1.0, Radius: 0.5, Color: [4]uint8{160, 210, 255, 255}, TextureType: "moon",
 			})
 			idCnt++
 		}
@@ -516,7 +517,7 @@ func InitBuiltinScenarios() {
 				ID: idCnt, Name: fmt.Sprintf("Milky Way Star %d", i+1),
 				Position: [3]float32{float32(45.0 + r*math.Cos(ang)), float32(r * 0.3 * math.Sin(ang)), float32(20.0 + r*math.Sin(ang))},
 				Velocity: [3]float32{float32(-1.8 + spd*math.Sin(ang)), -0.2, float32(-1.2 - spd*math.Cos(ang))},
-				Mass: 0.8, Radius: 0.45, Color: [4]uint8{255, 220, 160, 255}, TextureType: "moon",
+				Mass:     0.8, Radius: 0.45, Color: [4]uint8{255, 220, 160, 255}, TextureType: "moon",
 			})
 			idCnt++
 		}
@@ -592,7 +593,7 @@ func InitBuiltinScenarios() {
 				ID: astID, Name: fmt.Sprintf("Asteroid #%d", i+1),
 				Position: [3]float32{float32(r * math.Cos(ang)), float32((i%3)-1) * 0.4, float32(r * math.Sin(ang))},
 				Velocity: [3]float32{float32(-spd * math.Sin(ang)), 0, float32(spd * math.Cos(ang))},
-				Mass: 0.002, Radius: 0.22, Color: [4]uint8{180, 175, 165, 255}, TextureType: "moon",
+				Mass:     0.002, Radius: 0.22, Color: [4]uint8{180, 175, 165, 255}, TextureType: "moon",
 			})
 			astID++
 		}

@@ -325,7 +325,7 @@ func generateMoonMap(w, h int) *image.RGBA {
 			}
 			val := uint8(base)
 
-			img.Set(x, y, color.RGBA{R: val, G: val, B: uint8(float64(val)*0.95), A: 255})
+			img.Set(x, y, color.RGBA{R: val, G: val, B: uint8(float64(val) * 0.95), A: 255})
 		}
 	}
 	return img

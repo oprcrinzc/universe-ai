@@ -12,29 +12,31 @@ import (
 )
 
 var (
-	simState *SimState
+	simState  *SimState
 	simConfig *Config
 )
 
 func main() {
 	simConfig = &Config{
-		G:                 1.0,
-		TimeScale:         1.0,
-		TimeScaleStep:     0.5,
-		SubSteps:          2,
-		Softening:         0.8,
-		Collision:         CollisionMerge,
-		Paused:            false,
-		EnableBarnesHut:   true,
-		BarnesHutTheta:    0.7,
-		EnableRelativity:  false,
-		SpeedOfLight:      180.0,
-		EnableRocheLimit:  true,
-		ParticleGlowMode:  false,
-		ShowPotentialGrid: false,
-		SpacetimeScale:     1.0,
+		G:                   1.0,
+		TimeScale:           1.0,
+		TimeScaleStep:       0.5,
+		SubSteps:            2,
+		Softening:           0.8,
+		Collision:           CollisionMerge,
+		Paused:              false,
+		EnableBarnesHut:     true,
+		BarnesHutTheta:      0.7,
+		EnableRelativity:    false,
+		SpeedOfLight:        180.0,
+		EnableRocheLimit:    true,
+		ParticleGlowMode:    false,
+		ShowPotentialGrid:   false,
+		SpacetimeScale:      1.0,
 		SpacetimeResolution: 80,
-		ShowVectorField:   false,
+		ShowVectorField:     false,
+		Show2DCircles:       true,
+		Heatmap2DResolution: 64,
 	}
 
 	simState = &SimState{
@@ -61,6 +63,9 @@ func main() {
 	gravitySim.Set("getStats", js.FuncOf(jsGetStats))
 	gravitySim.Set("getSpacetimeGrid", js.FuncOf(jsGetSpacetimeGrid))
 	gravitySim.Set("getVectorField", js.FuncOf(jsGetVectorField))
+	gravitySim.Set("getLagrangePoints", js.FuncOf(jsGetLagrangePoints))
+	gravitySim.Set("spawnLagrangeProbe", js.FuncOf(jsSpawnLagrangeProbe))
+	gravitySim.Set("getGWStats", js.FuncOf(jsGetGWStats))
 
 	jsGlobal.Set("GravitySim", gravitySim)
 
@@ -70,7 +75,7 @@ func main() {
 
 func jsInit(this js.Value, args []js.Value) any {
 	preset := PresetSolarSystem
-	if len(args) > 0 {
+	if len(args) > 0 && args[0].Type() == js.TypeNumber {
 		preset = PresetType(args[0].Int())
 	}
 	LoadPreset(simState, simConfig, preset)
@@ -79,7 +84,7 @@ func jsInit(this js.Value, args []js.Value) any {
 
 func jsStep(this js.Value, args []js.Value) any {
 	dt := float32(0.0166)
-	if len(args) > 0 {
+	if len(args) > 0 && args[0].Type() == js.TypeNumber {
 		dt = float32(args[0].Float())
 	}
 	if dt > 0.05 {
@@ -134,22 +139,42 @@ func jsGetBodiesBuffer(this js.Value, args []js.Value) any {
 		buffer[offset+12] = float32(b.Color.A) / 255.0
 
 		var flags float32 = 0
-		if b.IsStar { flags += 1 }
-		if b.IsBlackHole { flags += 2 }
-		if b.IsPulsar { flags += 4 }
-		if b.IsComet { flags += 8 }
-		if b.IsStationary { flags += 16 }
-		if b.ID == simState.SelectedBodyID { flags += 32 }
+		if b.IsStar {
+			flags += 1
+		}
+		if b.IsBlackHole {
+			flags += 2
+		}
+		if b.IsPulsar {
+			flags += 4
+		}
+		if b.IsComet {
+			flags += 8
+		}
+		if b.IsStationary {
+			flags += 16
+		}
+		if b.ID == simState.SelectedBodyID {
+			flags += 32
+		}
 		buffer[offset+13] = flags
 
-		buffer[offset+14] = float32(b.TextureType)
+		buffer[offset+14] = float32(b.CelestialIcon)
 		spd := float32(math.Sqrt(float64(b.Velocity.X*b.Velocity.X + b.Velocity.Y*b.Velocity.Y + b.Velocity.Z*b.Velocity.Z)))
 		buffer[offset+15] = spd
 	}
 
-	jsArr := js.Global().Get("Float32Array").New(len(buffer))
-	js.CopyBytesToJS(jsArr, float32SliceToBytes(buffer))
-	return jsArr
+	return float32SliceToJSFloat32Array(buffer)
+}
+
+func float32SliceToJSFloat32Array(s []float32) js.Value {
+	if len(s) == 0 {
+		return js.Global().Get("Float32Array").New(0)
+	}
+	bytes := float32SliceToBytes(s)
+	uint8Arr := js.Global().Get("Uint8Array").New(len(bytes))
+	js.CopyBytesToJS(uint8Arr, bytes)
+	return js.Global().Get("Float32Array").New(uint8Arr.Get("buffer"), uint8Arr.Get("byteOffset"), len(s))
 }
 
 func float32SliceToBytes(s []float32) []byte {
@@ -165,7 +190,7 @@ func float32SliceToBytes(s []float32) []byte {
 }
 
 func jsSelectBody(this js.Value, args []js.Value) any {
-	if len(args) == 0 {
+	if len(args) == 0 || args[0].IsNull() || args[0].IsUndefined() || args[0].Type() != js.TypeNumber {
 		simState.SelectedBodyID = -1
 		return nil
 	}
@@ -185,14 +210,14 @@ func jsSelectBody(this js.Value, args []js.Value) any {
 
 	elem := CalculateOrbitalElements(body, simState.Bodies, simConfig.G)
 	data, _ := json.Marshal(map[string]any{
-		"id":              body.ID,
-		"name":            body.Name,
-		"mass":            body.Mass,
-		"radius":          body.Radius,
-		"is_stationary":   body.IsStationary,
-		"pos":             body.Position,
-		"vel":             body.Velocity,
-		"elements":        elem,
+		"id":            body.ID,
+		"name":          body.Name,
+		"mass":          body.Mass,
+		"radius":        body.Radius,
+		"is_stationary": body.IsStationary,
+		"pos":           body.Position,
+		"vel":           body.Velocity,
+		"elements":      elem,
 	})
 	return string(data)
 }
@@ -284,13 +309,21 @@ func jsSpawnBody(this js.Value, args []js.Value) any {
 	col := Color{uint8(args[9].Int()), uint8(args[10].Int()), uint8(args[11].Int()), 255}
 
 	isStar := false
-	if len(args) > 12 { isStar = args[12].Bool() }
+	if len(args) > 12 {
+		isStar = args[12].Bool()
+	}
 	isBlackHole := false
-	if len(args) > 13 { isBlackHole = args[13].Bool() }
+	if len(args) > 13 {
+		isBlackHole = args[13].Bool()
+	}
 
 	texType := 1 // Earth
-	if isStar { texType = 6 }
-	if isBlackHole { texType = 7 }
+	if isStar {
+		texType = 6
+	}
+	if isBlackHole {
+		texType = 7
+	}
 
 	b := addBody(simState, name, pos, vel, mass, radius, col, false, isStar, texType)
 	b.IsBlackHole = isBlackHole
@@ -369,7 +402,7 @@ func jsSpawnCluster(this js.Value, args []js.Value) any {
 }
 
 func jsDeleteBody(this js.Value, args []js.Value) any {
-	if len(args) == 0 {
+	if len(args) == 0 || args[0].IsNull() || args[0].IsUndefined() || args[0].Type() != js.TypeNumber {
 		return false
 	}
 	id := args[0].Int()
@@ -416,12 +449,20 @@ func jsSetConfig(this js.Value, args []js.Value) any {
 		simConfig.ParticleGlowMode = val.Bool()
 	case "show_potential_grid":
 		simConfig.ShowPotentialGrid = val.Bool()
+	case "show_gravitational_waves":
+		simConfig.ShowGravitationalWaves = val.Bool()
 	case "spacetime_scale":
 		simConfig.SpacetimeScale = float32(val.Float())
 	case "spacetime_resolution":
 		simConfig.SpacetimeResolution = val.Int()
 	case "show_vector_field":
 		simConfig.ShowVectorField = val.Bool()
+	case "show_vectors":
+		simConfig.ShowVectors = val.Bool()
+	case "show_2d_circles":
+		simConfig.Show2DCircles = val.Bool()
+	case "heatmap_2d_resolution":
+		simConfig.Heatmap2DResolution = val.Int()
 	}
 	return true
 }
@@ -440,6 +481,16 @@ func jsGetStats(this js.Value, args []js.Value) any {
 		"tidal_breakups":   simState.TidalBreakupCount,
 		"physics_time_ms":  simState.PhysicsTimeMs,
 		"interactions_sec": simState.InteractionsPerSec,
+	})
+	return string(data)
+}
+
+func jsGetGWStats(this js.Value, args []js.Value) any {
+	data, _ := json.Marshal(map[string]any{
+		"strain": simState.LastGWStrain,
+		"freq":   simState.LastGWFreq,
+		"power":  simState.LastGWPower,
+		"bursts": len(simState.GWBursts),
 	})
 	return string(data)
 }
@@ -466,62 +517,69 @@ func jsGetSpacetimeGrid(this js.Value, args []js.Value) any {
 	totalPoints := (steps + 1) * (steps + 1)
 	depths := make([]float32, totalPoints)
 
-	heavyBodies := make([]*Body, 0, 32)
-	selectedIncluded := false
-
-	if simState.SelectedBodyID != -1 {
-		for _, b := range simState.Bodies {
-			if b.ID == simState.SelectedBodyID {
-				heavyBodies = append(heavyBodies, b)
-				selectedIncluded = true
-				break
-			}
-		}
-	}
-
-	if len(simState.Bodies) <= 50 {
-		for _, b := range simState.Bodies {
-			if selectedIncluded && b.ID == simState.SelectedBodyID {
-				continue
-			}
-			if b.Mass >= 0.05 || b.IsStar || b.IsBlackHole {
-				heavyBodies = append(heavyBodies, b)
-			}
-		}
-	} else {
-		for _, b := range simState.Bodies {
-			if selectedIncluded && b.ID == simState.SelectedBodyID {
-				continue
-			}
-			if b.Mass >= 15.0 || b.IsBlackHole || b.IsStar {
-				heavyBodies = append(heavyBodies, b)
-				if len(heavyBodies) >= 32 {
-					break
-				}
-			}
-		}
-	}
-	if len(heavyBodies) == 0 && len(simState.Bodies) > 0 {
-		heavyBodies = append(heavyBodies, simState.Bodies[0])
-	}
-
-	// Precompute source bodies to avoid millions of math.Pow calls inside vertex loops
+	// Precompute source bodies if Spacetime potential grid is enabled
 	type precomputedBody struct {
 		x, z        float32
 		scaledMassG float64
 	}
-	sources := make([]precomputedBody, len(heavyBodies))
-	for k, b := range heavyBodies {
-		sm := math.Pow(b.Mass, 0.48) * 8.0
-		if b.ID == simState.SelectedBodyID {
-			sm *= 1.35
+	var sources []precomputedBody
+
+	if simConfig.ShowPotentialGrid {
+		heavyBodies := make([]*Body, 0, 32)
+		selectedIncluded := false
+
+		if simState.SelectedBodyID != -1 {
+			for _, b := range simState.Bodies {
+				if b.ID == simState.SelectedBodyID {
+					heavyBodies = append(heavyBodies, b)
+					selectedIncluded = true
+					break
+				}
+			}
 		}
-		sources[k] = precomputedBody{
-			x:           b.Position.X,
-			z:           b.Position.Z,
-			scaledMassG: simConfig.G * sm,
+
+		if len(simState.Bodies) <= 50 {
+			for _, b := range simState.Bodies {
+				if selectedIncluded && b.ID == simState.SelectedBodyID {
+					continue
+				}
+				if b.Mass >= 0.05 || b.IsStar || b.IsBlackHole {
+					heavyBodies = append(heavyBodies, b)
+				}
+			}
+		} else {
+			for _, b := range simState.Bodies {
+				if selectedIncluded && b.ID == simState.SelectedBodyID {
+					continue
+				}
+				if b.Mass >= 15.0 || b.IsBlackHole || b.IsStar {
+					heavyBodies = append(heavyBodies, b)
+					if len(heavyBodies) >= 32 {
+						break
+					}
+				}
+			}
+		}
+		if len(heavyBodies) == 0 && len(simState.Bodies) > 0 {
+			heavyBodies = append(heavyBodies, simState.Bodies[0])
+		}
+
+		sources = make([]precomputedBody, len(heavyBodies))
+		for k, b := range heavyBodies {
+			sm := math.Pow(b.Mass, 0.48) * 8.0
+			if b.ID == simState.SelectedBodyID {
+				sm *= 1.35
+			}
+			sources[k] = precomputedBody{
+				x:           b.Position.X,
+				z:           b.Position.Z,
+				scaledMassG: simConfig.G * sm,
+			}
 		}
 	}
+
+	curTime := simState.Time
+	gwActive := simConfig.ShowGravitationalWaves
 
 	// Align vertex ordering with Three.js PlaneGeometry(span, span, steps, steps) rotated -PI/2
 	// Outer loop j corresponds to Z axis, inner loop i corresponds to X axis
@@ -530,22 +588,32 @@ func jsGetSpacetimeGrid(this js.Value, args []js.Value) any {
 		gz := centerZ - halfSpan + float32(j)*stepSize
 		for i := 0; i <= steps; i++ {
 			gx := centerX - halfSpan + float32(i)*stepSize
-			var potential float64
-			for k := 0; k < len(sources); k++ {
-				dx := float64(gx - sources[k].x)
-				dz := float64(gz - sources[k].z)
-				r := math.Sqrt(dx*dx + dz*dz + 1.8)
-				potential += sources[k].scaledMassG / r
+			var totalDepth float32 = 0.0
+
+			// 1. Spacetime Curvature Potential Wells (Only if ShowPotentialGrid is ON)
+			if simConfig.ShowPotentialGrid {
+				var potential float64
+				for k := 0; k < len(sources); k++ {
+					dx := float64(gx - sources[k].x)
+					dz := float64(gz - sources[k].z)
+					r := math.Sqrt(dx*dx + dz*dz + 1.8)
+					potential += sources[k].scaledMassG / r
+				}
+				totalDepth = -float32(math.Min(38.0, potential*0.14))
 			}
-			depth := -float32(math.Min(38.0, potential*0.14))
-			depths[idx] = depth
+
+			// 2. Dynamic Gravitational Wave Metric Ripples (Only if ShowGravitationalWaves is ON)
+			if gwActive {
+				gwDisp, _ := ComputeGravitationalWaveDisplacement(simState, simConfig, gx, gz, curTime)
+				totalDepth += gwDisp
+			}
+
+			depths[idx] = totalDepth
 			idx++
 		}
 	}
 
-	jsArr := js.Global().Get("Float32Array").New(len(depths))
-	js.CopyBytesToJS(jsArr, float32SliceToBytes(depths))
-	return jsArr
+	return float32SliceToJSFloat32Array(depths)
 }
 
 func jsGetVectorField(this js.Value, args []js.Value) any {
@@ -571,9 +639,7 @@ func jsGetVectorField(this js.Value, args []js.Value) any {
 	buffer := make([]float32, totalPoints*floatsPerVector)
 
 	if len(simState.Bodies) == 0 {
-		jsArr := js.Global().Get("Float32Array").New(len(buffer))
-		js.CopyBytesToJS(jsArr, float32SliceToBytes(buffer))
-		return jsArr
+		return float32SliceToJSFloat32Array(buffer)
 	}
 
 	stepSize := span / float32(steps-1)
@@ -704,22 +770,46 @@ func jsGetVectorField(this js.Value, args []js.Value) any {
 				w2z := endZ - backZ - sideZ
 
 				// Segment 1: shaft (start -> end)
-				buffer[outIdx+0] = startX; buffer[outIdx+1] = startY; buffer[outIdx+2] = startZ
-				buffer[outIdx+3] = cr;     buffer[outIdx+4] = cg;     buffer[outIdx+5] = cb
-				buffer[outIdx+6] = endX;   buffer[outIdx+7] = endY;   buffer[outIdx+8] = endZ
-				buffer[outIdx+9] = cr;     buffer[outIdx+10] = cg;    buffer[outIdx+11] = cb
+				buffer[outIdx+0] = startX
+				buffer[outIdx+1] = startY
+				buffer[outIdx+2] = startZ
+				buffer[outIdx+3] = cr
+				buffer[outIdx+4] = cg
+				buffer[outIdx+5] = cb
+				buffer[outIdx+6] = endX
+				buffer[outIdx+7] = endY
+				buffer[outIdx+8] = endZ
+				buffer[outIdx+9] = cr
+				buffer[outIdx+10] = cg
+				buffer[outIdx+11] = cb
 
 				// Segment 2: wing 1 (end -> w1)
-				buffer[outIdx+12] = endX; buffer[outIdx+13] = endY; buffer[outIdx+14] = endZ
-				buffer[outIdx+15] = cr;   buffer[outIdx+16] = cg;   buffer[outIdx+17] = cb
-				buffer[outIdx+18] = w1x;  buffer[outIdx+19] = w1y;  buffer[outIdx+20] = w1z
-				buffer[outIdx+21] = cr;   buffer[outIdx+22] = cg;   buffer[outIdx+23] = cb
+				buffer[outIdx+12] = endX
+				buffer[outIdx+13] = endY
+				buffer[outIdx+14] = endZ
+				buffer[outIdx+15] = cr
+				buffer[outIdx+16] = cg
+				buffer[outIdx+17] = cb
+				buffer[outIdx+18] = w1x
+				buffer[outIdx+19] = w1y
+				buffer[outIdx+20] = w1z
+				buffer[outIdx+21] = cr
+				buffer[outIdx+22] = cg
+				buffer[outIdx+23] = cb
 
 				// Segment 3: wing 2 (end -> w2)
-				buffer[outIdx+24] = endX; buffer[outIdx+25] = endY; buffer[outIdx+26] = endZ
-				buffer[outIdx+27] = cr;   buffer[outIdx+28] = cg;   buffer[outIdx+29] = cb
-				buffer[outIdx+30] = w2x;  buffer[outIdx+31] = w2y;  buffer[outIdx+32] = w2z
-				buffer[outIdx+33] = cr;   buffer[outIdx+34] = cg;   buffer[outIdx+35] = cb
+				buffer[outIdx+24] = endX
+				buffer[outIdx+25] = endY
+				buffer[outIdx+26] = endZ
+				buffer[outIdx+27] = cr
+				buffer[outIdx+28] = cg
+				buffer[outIdx+29] = cb
+				buffer[outIdx+30] = w2x
+				buffer[outIdx+31] = w2y
+				buffer[outIdx+32] = w2z
+				buffer[outIdx+33] = cr
+				buffer[outIdx+34] = cg
+				buffer[outIdx+35] = cb
 			} else {
 				// Zero-length segment collapsed to needle root
 				for v := 0; v < 6; v++ {
@@ -735,7 +825,5 @@ func jsGetVectorField(this js.Value, args []js.Value) any {
 		}
 	}
 
-	jsArr := js.Global().Get("Float32Array").New(len(buffer))
-	js.CopyBytesToJS(jsArr, float32SliceToBytes(buffer))
-	return jsArr
+	return float32SliceToJSFloat32Array(buffer)
 }

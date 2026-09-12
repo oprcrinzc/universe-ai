@@ -58,6 +58,13 @@ func main() {
 	gpuOk := InitGPUCompute()
 	defer CleanupGPUCompute()
 
+	for _, arg := range os.Args[1:] {
+		if arg == "--verify-gpu" || arg == "--test-gpu" {
+			VerifyGPUComputeDirect()
+			return
+		}
+	}
+
 	// Ensure built-in scenario templates are written to scenarios/
 	InitBuiltinScenarios()
 
@@ -73,7 +80,7 @@ func main() {
 		Collision:           CollisionMerge,
 		Paused:              false,
 		ShowTrails:          true,
-		ShowGrid:            true,
+		ShowGrid:            false,
 		ShowPotentialGrid:   false,
 		SpacetimeScale:      3.0,
 		SpacetimeResolution: 512,
@@ -83,7 +90,7 @@ func main() {
 		AutoPerformanceMode: true,
 		ShowVectors:         false,
 		ShowForces:          false,
-		ShowLabels:          true,
+		ShowLabels:          false,
 		ShowStarfield:       true,
 		ShowHelp:            false,
 		UseBarnesHut:        true,
@@ -97,13 +104,20 @@ func main() {
 		Integrator:          IntegratorYoshida4,
 		Show2DViewport:      true,
 		Show2DLabels:        true,
+		Show2DIcons:         false, // Default: clean, clear circle mode (pictures/glyphs hidden until user toggles [ICON])
+		Show2DCircles:       true,  // Default: body overlay outline circles enabled in 2D
 		Show2DHeatmap:       true,
+		Heatmap2DResolution: 64, // Default: 64 columns
 		Show3DHeatmapPlane:  false,
 		Show2DVectorField:   true,
 		Viewport2DZoom:      0.45,
 		RealScaleVisualMode: false,
-		ShowLagrangePoints:  true,
-		NotificationText:    "Gravity Simulator 3D (144 FPS / 1080p). F5-F8: 1K-10K Gigantic Scenes | F1: Manual",
+		ShowLagrangePoints:  false,
+		Offload3D:           false,
+		Track2D:             false,
+		Show2DGW:            true,
+		ShowStatsHUD:        true,
+		NotificationText:    "Gravity Simulator 3D (144 FPS / 1080p). F5/Z: 2D Main Offload | F1: Manual",
 		NotificationTimer:   5.0,
 	}
 
@@ -128,6 +142,9 @@ func main() {
 		arg := os.Args[i]
 		if arg == "--capture-demo" {
 			RunDemoCapture(state, cfg, camera, screenWidth, screenHeight)
+			return
+		} else if arg == "--verify-gpu" || arg == "--test-gpu" {
+			VerifyGPUComputeDirect()
 			return
 		} else if (arg == "--load" || arg == "-l") && i+1 < len(os.Args) {
 			scenFile := os.Args[i+1]
@@ -210,13 +227,23 @@ func main() {
 			cfg.NotificationTimer = 2.5
 		}
 		if rl.IsKeyPressed(rl.KeyT) {
-			cfg.ShowTextures = !cfg.ShowTextures
-			if cfg.ShowTextures {
-				cfg.NotificationText = "Procedural Textures: ON"
+			if rl.IsKeyDown(rl.KeyLeftShift) || rl.IsKeyDown(rl.KeyRightShift) {
+				cfg.ShowTrails = !cfg.ShowTrails
+				status := "OFF"
+				if cfg.ShowTrails {
+					status = "ON"
+				}
+				cfg.NotificationText = fmt.Sprintf("Orbit Reference Trails: %s", status)
+				cfg.NotificationTimer = 1.8
 			} else {
-				cfg.NotificationText = "Procedural Textures: OFF"
+				cfg.ShowTextures = !cfg.ShowTextures
+				if cfg.ShowTextures {
+					cfg.NotificationText = "Procedural Textures: ON"
+				} else {
+					cfg.NotificationText = "Procedural Textures: OFF"
+				}
+				cfg.NotificationTimer = 2.0
 			}
-			cfg.NotificationTimer = 2.0
 		}
 		if rl.IsKeyPressed(rl.KeyG) {
 			cfg.EnableRelativity = !cfg.EnableRelativity
@@ -228,13 +255,14 @@ func main() {
 			cfg.NotificationTimer = 2.5
 		}
 		if rl.IsKeyPressed(rl.KeyV) {
-			cfg.CinematicCamera = !cfg.CinematicCamera
-			if cfg.CinematicCamera {
-				cfg.NotificationText = "Cinematic Auto-Director Camera: ON"
-			} else {
-				cfg.NotificationText = "Cinematic Auto-Director Camera: OFF"
+			cfg.ShowVectors = !cfg.ShowVectors
+			cfg.Show2DVectorField = cfg.ShowVectors
+			status := "OFF"
+			if cfg.ShowVectors {
+				status = "ON"
 			}
-			cfg.NotificationTimer = 2.5
+			cfg.NotificationText = fmt.Sprintf("Object Direction Vectors: %s", status)
+			cfg.NotificationTimer = 2.0
 		}
 		if rl.IsKeyPressed(rl.KeyP) {
 			cfg.ShowPotentialGrid = !cfg.ShowPotentialGrid
@@ -246,16 +274,28 @@ func main() {
 			cfg.NotificationTimer = 2.5
 		}
 		if rl.IsKeyPressed(rl.KeyLeftBracket) {
-			cfg.SpacetimeScale = float32(math.Max(0.5, float64(cfg.SpacetimeScale-0.25)))
-			span := getStaticSpacetimeSpan(cfg)
-			cfg.NotificationText = fmt.Sprintf("Spacetime Grid Scale: %.2fx (Span: %.0f)", cfg.SpacetimeScale, span)
-			cfg.NotificationTimer = 2.0
+			if rl.IsKeyDown(rl.KeyLeftAlt) || rl.IsKeyDown(rl.KeyRightAlt) {
+				DecreaseHeatmap2DResolution(cfg)
+			} else if rl.IsKeyDown(rl.KeyLeftShift) || rl.IsKeyDown(rl.KeyRightShift) {
+				DecreaseResolution(cfg)
+			} else {
+				cfg.SpacetimeScale = float32(math.Max(0.5, float64(cfg.SpacetimeScale-0.25)))
+				span := getStaticSpacetimeSpan(cfg)
+				cfg.NotificationText = fmt.Sprintf("Spacetime Grid Scale: %.2fx (Span: %.0f)", cfg.SpacetimeScale, span)
+				cfg.NotificationTimer = 2.0
+			}
 		}
 		if rl.IsKeyPressed(rl.KeyRightBracket) {
-			cfg.SpacetimeScale = float32(math.Min(3.5, float64(cfg.SpacetimeScale+0.25)))
-			span := getStaticSpacetimeSpan(cfg)
-			cfg.NotificationText = fmt.Sprintf("Spacetime Grid Scale: %.2fx (Span: %.0f)", cfg.SpacetimeScale, span)
-			cfg.NotificationTimer = 2.0
+			if rl.IsKeyDown(rl.KeyLeftAlt) || rl.IsKeyDown(rl.KeyRightAlt) {
+				IncreaseHeatmap2DResolution(cfg)
+			} else if rl.IsKeyDown(rl.KeyLeftShift) || rl.IsKeyDown(rl.KeyRightShift) {
+				IncreaseResolution(cfg)
+			} else {
+				cfg.SpacetimeScale = float32(math.Min(3.5, float64(cfg.SpacetimeScale+0.25)))
+				span := getStaticSpacetimeSpan(cfg)
+				cfg.NotificationText = fmt.Sprintf("Spacetime Grid Scale: %.2fx (Span: %.0f)", cfg.SpacetimeScale, span)
+				cfg.NotificationTimer = 2.0
+			}
 		}
 		if rl.IsKeyPressed(rl.KeyL) {
 			cfg.ParticleGlowMode = !cfg.ParticleGlowMode
@@ -280,11 +320,26 @@ func main() {
 			cfg.NotificationTimer = 2.5
 		}
 		if rl.IsKeyPressed(rl.KeyO) {
-			cfg.ShowVectorField = !cfg.ShowVectorField
-			if cfg.ShowVectorField {
-				cfg.NotificationText = "Gravitational Vector Field: ON (32x32 needles)"
+			if !cfg.ShowVectorField {
+				cfg.ShowVectorField = true
+				cfg.DenseVectorField = false
+				cfg.NotificationText = "Gravitational Vector Field: ON (3D Volume)"
+			} else if !cfg.DenseVectorField {
+				cfg.DenseVectorField = true
+				cfg.NotificationText = "Gravitational Vector Field: ULTRA-DENSE 3D (3,448 volumetric vectors)"
 			} else {
+				cfg.ShowVectorField = false
+				cfg.DenseVectorField = false
 				cfg.NotificationText = "Gravitational Vector Field: OFF"
+			}
+			cfg.NotificationTimer = 2.0
+		}
+		if rl.IsKeyPressed(rl.KeyJ) {
+			cfg.ShowGravitationalWaves = !cfg.ShowGravitationalWaves
+			if cfg.ShowGravitationalWaves {
+				cfg.NotificationText = "Gravitational Waves & LIGO Detector: ON (Dynamic Quadrupole Metric)"
+			} else {
+				cfg.NotificationText = "Gravitational Waves: OFF"
 			}
 			cfg.NotificationTimer = 2.0
 		}
@@ -307,12 +362,27 @@ func main() {
 			cfg.NotificationTimer = 2.0
 		}
 		if rl.IsKeyPressed(rl.KeyH) {
-			cfg.Show2DHeatmap = !cfg.Show2DHeatmap
-			cfg.Show3DHeatmapPlane = cfg.Show2DHeatmap
-			if cfg.Show2DHeatmap {
-				cfg.NotificationText = "Gravitational Heatmap: ON (2D Map & 3D Plane Grid)"
+			if rl.IsKeyDown(rl.KeyLeftShift) || rl.IsKeyDown(rl.KeyRightShift) {
+				IncreaseHeatmap2DResolution(cfg)
+			} else if rl.IsKeyDown(rl.KeyLeftAlt) || rl.IsKeyDown(rl.KeyRightAlt) || rl.IsKeyDown(rl.KeyLeftControl) || rl.IsKeyDown(rl.KeyRightControl) {
+				DecreaseHeatmap2DResolution(cfg)
 			} else {
-				cfg.NotificationText = "Gravitational Heatmap: OFF"
+				cfg.Show2DHeatmap = !cfg.Show2DHeatmap
+				cfg.Show3DHeatmapPlane = cfg.Show2DHeatmap
+				if cfg.Show2DHeatmap {
+					cfg.NotificationText = "Gravitational Heatmap: ON (2D Map & 3D Plane Grid)"
+				} else {
+					cfg.NotificationText = "Gravitational Heatmap: OFF"
+				}
+				cfg.NotificationTimer = 2.0
+			}
+		}
+		if rl.IsKeyPressed(rl.KeyY) {
+			cfg.Show2DIcons = !cfg.Show2DIcons
+			if cfg.Show2DIcons {
+				cfg.NotificationText = "2D Object Icons: ON (Celestial Pictures / Glyphs Active)"
+			} else {
+				cfg.NotificationText = "2D Object Icons: OFF (Clear Circles Mode)"
 			}
 			cfg.NotificationTimer = 2.0
 		}
@@ -325,6 +395,50 @@ func main() {
 				cfg.NotificationText = "Integrator: Velocity Verlet 2nd-Order Symplectic"
 			}
 			cfg.NotificationTimer = 2.5
+		}
+		if rl.IsKeyPressed(rl.KeyF5) || rl.IsKeyPressed(rl.KeyZ) {
+			cfg.Offload3D = !cfg.Offload3D
+			if cfg.Offload3D {
+				cfg.Show2DViewport = true
+				cfg.NotificationText = "3D Render Offloaded: 2D Main Viewport Active"
+			} else {
+				cfg.NotificationText = "3D Render Restored: Standard Mode"
+			}
+			cfg.NotificationTimer = 2.5
+		}
+		if rl.IsKeyPressed(rl.KeyF) {
+			if state.SelectedBodyID != -1 {
+				for _, b := range state.Bodies {
+					if b.ID == state.SelectedBodyID {
+						cfg.Viewport2DPan = rl.NewVector2(b.Position.X, b.Position.Z)
+						camera.Target = b.Position
+						cfg.NotificationText = fmt.Sprintf("Focused on: %s", b.Name)
+						cfg.NotificationTimer = 1.5
+						break
+					}
+				}
+			} else if state.SelectedLagrangeIndex > 0 {
+				prim, sec := GetLagrangePair(state)
+				if prim != nil && sec != nil {
+					pts := ComputeLagrangePoints(prim, sec, cfg.G)
+					idx := state.SelectedLagrangeIndex - 1
+					if idx >= 0 && idx < 5 {
+						cfg.Viewport2DPan = rl.NewVector2(pts[idx].Position.X, pts[idx].Position.Z)
+						camera.Target = pts[idx].Position
+						cfg.NotificationText = fmt.Sprintf("Focused on: %s", pts[idx].Name)
+						cfg.NotificationTimer = 1.5
+					}
+				}
+			}
+		}
+		if rl.IsKeyPressed(rl.KeyT) {
+			cfg.Track2D = !cfg.Track2D
+			if cfg.Track2D {
+				cfg.NotificationText = "2D Body Tracking: ON (Target Locked)"
+			} else {
+				cfg.NotificationText = "2D Body Tracking: OFF"
+			}
+			cfg.NotificationTimer = 1.5
 		}
 
 		// Preset shortcuts (1-9, 0)
@@ -391,6 +505,16 @@ func main() {
 			camera.Target = rl.NewVector3(0, 0, 0)
 		}
 
+		if rl.IsKeyPressed(rl.KeyF11) {
+			cfg.ShowStatsHUD = !cfg.ShowStatsHUD
+			status := "OFF"
+			if cfg.ShowStatsHUD {
+				status = "ON"
+			}
+			cfg.NotificationText = fmt.Sprintf("Stats HUD: %s", status)
+			cfg.NotificationTimer = 1.8
+		}
+
 		if rl.IsKeyPressed(rl.KeyF12) {
 			_ = os.MkdirAll("screenshots", 0o755)
 			snapName := fmt.Sprintf("screenshots/screenshot_%d.png", time.Now().Unix())
@@ -404,13 +528,33 @@ func main() {
 			state.FollowSelected = false
 		}
 		if rl.IsKeyPressed(rl.KeyC) {
-			if state.SelectedBodyID != -1 {
+			if rl.IsKeyDown(rl.KeyLeftShift) || rl.IsKeyDown(rl.KeyRightShift) || rl.IsKeyDown(rl.KeyLeftAlt) {
+				cfg.Show2DCircles = !cfg.Show2DCircles
+				status := "OFF"
+				if cfg.Show2DCircles {
+					status = "ON"
+				}
+				cfg.NotificationText = fmt.Sprintf("2D Circles & Dots: %s", status)
+				cfg.NotificationTimer = 1.8
+			} else if state.SelectedBodyID != -1 || state.SelectedLagrangeIndex > 0 {
 				state.FollowSelected = !state.FollowSelected
 				if state.FollowSelected {
 					state.FollowBarycenter = false
 				}
 			} else {
 				camera.LockToNearest(state, cfg)
+			}
+		}
+		if rl.IsKeyPressed(rl.KeyF) && state.SelectedLagrangeIndex > 0 {
+			primary, secondary := GetLagrangePair(state)
+			if primary != nil && secondary != nil {
+				pts := ComputeLagrangePoints(primary, secondary, cfg.G)
+				idx := state.SelectedLagrangeIndex - 1
+				if idx >= 0 && idx < 5 {
+					camera.Target = pts[idx].Position
+					cfg.NotificationText = fmt.Sprintf("Camera centered on %s", pts[idx].Name)
+					cfg.NotificationTimer = 1.5
+				}
 			}
 		}
 
@@ -420,8 +564,8 @@ func main() {
 			uiCapturedMouse = true
 		}
 
-		// Handle 3D Mouse Interactions when not interacting with UI
-		if !uiCapturedMouse {
+		// Handle 3D Mouse Interactions when not interacting with UI and not in 2D Offload mode
+		if !uiCapturedMouse && !cfg.Offload3D {
 			ray := rl.GetScreenToWorldRay(mousePos, camera.Camera)
 
 			// Spawner Mode: click & drag to place and give initial velocity
@@ -447,51 +591,15 @@ func main() {
 					}
 
 					if rl.IsMouseButtonReleased(rl.MouseLeftButton) {
-						if state.SpawnPreset == SpawnAsteroidRing {
-							for a := 0; a < 16; a++ {
-								ang := float64(a) * (2.0 * math.Pi / 16.0)
-								r := float32(2.5 + float64(a%3)*0.8)
-								p := rl.NewVector3(
-									state.SpawnWorldPos.X+r*float32(math.Cos(ang)),
-									state.SpawnWorldPos.Y+float32((a%3)-1)*0.2,
-									state.SpawnWorldPos.Z+r*float32(math.Sin(ang)),
-								)
-								v := rl.NewVector3(
-									state.DragVelocity.X-float32(math.Sin(ang))*2.5,
-									state.DragVelocity.Y,
-									state.DragVelocity.Z+float32(math.Cos(ang))*2.5,
-								)
-								newBody := CreateBodyTemplate(SpawnMoon, p, v, state.NextID)
-								newBody.Name = fmt.Sprintf("Belt Asteroid #%d", state.NextID)
-								newBody.Radius = 0.25
-								newBody.Mass = 0.005
-								state.NextID++
-								state.Bodies = append(state.Bodies, newBody)
-							}
-							state.IsDraggingSpawn = false
-						} else if state.SpawnPreset == SpawnStarCluster50 {
-							SpawnStarCluster(state, state.SpawnWorldPos, state.DragVelocity, 50)
-							state.IsDraggingSpawn = false
-						} else if state.SpawnPreset == SpawnMiniGalaxy150 {
-							SpawnMiniGalaxy(state, state.SpawnWorldPos, state.DragVelocity, cfg.G)
-							state.IsDraggingSpawn = false
-						} else if state.SpawnPreset == SpawnCollapseCloud100 {
-							SpawnCollapseCloud(state, state.SpawnWorldPos, state.DragVelocity, 100)
-							state.IsDraggingSpawn = false
-						} else {
-							// Spawn new body!
-							newBody := CreateBodyTemplate(state.SpawnPreset, state.SpawnWorldPos, state.DragVelocity, state.NextID)
-							state.NextID++
-							state.Bodies = append(state.Bodies, newBody)
-							state.SelectedBodyID = newBody.ID
-							state.IsDraggingSpawn = false
-						}
+						SpawnPresetAtLocation(state, cfg, state.SpawnWorldPos, state.DragVelocity)
+						state.IsDraggingSpawn = false
 					}
 				}
 			} else {
-				// Selection Mode: Click to select body in 3D
+				// Selection Mode: Click to select body or Lagrange point in 3D
 				if rl.IsMouseButtonPressed(rl.MouseLeftButton) {
 					var hitBodyID int64 = -1
+					var hitLagrangeIdx int = 0
 					var closestDist float32 = 1e9
 
 					for _, b := range state.Bodies {
@@ -499,12 +607,36 @@ func main() {
 						if coll.Hit && coll.Distance < closestDist {
 							closestDist = coll.Distance
 							hitBodyID = b.ID
+							hitLagrangeIdx = 0
+						}
+					}
+
+					if cfg.ShowLagrangePoints {
+						primary, secondary := GetLagrangePair(state)
+						if primary != nil && secondary != nil {
+							pts := ComputeLagrangePoints(primary, secondary, cfg.G)
+							for i := 0; i < 5; i++ {
+								coll := rl.GetRayCollisionSphere(ray, pts[i].Position, 2.5)
+								if coll.Hit && coll.Distance < closestDist {
+									closestDist = coll.Distance
+									hitLagrangeIdx = i + 1
+									hitBodyID = -1
+								}
+							}
 						}
 					}
 
 					state.SelectedBodyID = hitBodyID
-					if hitBodyID == -1 {
+					state.SelectedLagrangeIndex = hitLagrangeIdx
+					if hitBodyID == -1 && hitLagrangeIdx == 0 {
 						state.FollowSelected = false
+					} else if hitLagrangeIdx > 0 {
+						primary, secondary := GetLagrangePair(state)
+						if primary != nil && secondary != nil {
+							pts := ComputeLagrangePoints(primary, secondary, cfg.G)
+							cfg.NotificationText = fmt.Sprintf("Selected: %s", pts[hitLagrangeIdx-1].Name)
+							cfg.NotificationTimer = 2.0
+						}
 					}
 				}
 			}
@@ -513,15 +645,18 @@ func main() {
 		// Update Camera
 		camera.Update(state, cfg, uiCapturedMouse)
 
-		// Advance Physics
+		// Advance Physics & Gravitational Wave field
 		UpdatePhysics(state, cfg, dt)
+		UpdateGravitationalWaves(state, cfg, float64(dt))
 
 		// Drawing
 		rl.BeginDrawing()
 		rl.ClearBackground(rl.NewColor(6, 8, 14, 255))
 
-		// 3D Scene
-		Render3DScene(state, cfg, camera)
+		// 3D Scene (completely offloaded/stopped when 2D Main Viewport mode is active!)
+		if !cfg.Offload3D {
+			Render3DScene(state, cfg, camera)
+		}
 
 		// 2D Tactical Viewport & Gravitational Heatmap
 		Draw2DViewport(state, cfg, w, h)

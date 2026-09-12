@@ -1,3 +1,5 @@
+//go:build js && wasm
+
 package main
 
 import (
@@ -65,17 +67,18 @@ func LoadPreset(state *SimState, cfg *Config, preset PresetType) {
 
 func addBody(state *SimState, name string, pos, vel Vector3, mass float64, radius float32, col Color, isStationary, isStar bool, texType int) *Body {
 	b := &Body{
-		ID:           state.NextID,
-		Name:         name,
-		Position:     pos,
-		Velocity:     vel,
-		Mass:         mass,
-		Radius:       radius,
-		Color:        col,
-		IsStationary: isStationary,
-		IsStar:       isStar,
-		TextureType:  texType,
-		Trail:        make([]Vector3, 0, MaxTrailPoints),
+		ID:            state.NextID,
+		Name:          name,
+		Position:      pos,
+		Velocity:      vel,
+		Mass:          mass,
+		Radius:        radius,
+		Color:         col,
+		IsStationary:  isStationary,
+		IsStar:        isStar,
+		TextureType:   texType,
+		CelestialIcon: DetermineCelestialIcon(name, isStar, false, false, mass, texType),
+		Trail:         make([]Vector3, 0, MaxTrailPoints),
 	}
 	state.NextID++
 	state.Bodies = append(state.Bodies, b)

@@ -1,3 +1,5 @@
+//go:build js && wasm
+
 package main
 
 import (
@@ -5,14 +7,14 @@ import (
 )
 
 type OrbitalElements struct {
-	PrimaryID       int     `json:"primary_id"`
-	PrimaryName     string  `json:"primary_name"`
-	Distance        float32 `json:"distance"`
-	SemiMajorAxis   float32 `json:"semi_major_axis"`
-	Eccentricity    float32 `json:"eccentricity"`
-	Period          float32 `json:"period"`
-	OrbitType       string  `json:"orbit_type"`
-	CircularSpeed   float32 `json:"circular_speed"`
+	PrimaryID     int     `json:"primary_id"`
+	PrimaryName   string  `json:"primary_name"`
+	Distance      float32 `json:"distance"`
+	SemiMajorAxis float32 `json:"semi_major_axis"`
+	Eccentricity  float32 `json:"eccentricity"`
+	Period        float32 `json:"period"`
+	OrbitType     string  `json:"orbit_type"`
+	CircularSpeed float32 `json:"circular_speed"`
 }
 
 func CalculateOrbitalElements(target *Body, bodies []*Body, g float64) OrbitalElements {

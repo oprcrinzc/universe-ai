@@ -1,3 +1,5 @@
+//go:build js && wasm
+
 package main
 
 import (
@@ -69,13 +71,14 @@ func UpdatePhysics(state *SimState, cfg *Config, dt float32) {
 		}
 
 		// 6. Collisions
-		handleCollisions(state, cfg.Collision)
+		handleCollisions(state, cfg)
 	}
 
 	// Trail recording (sample periodically)
 	updateTrails(state)
 
 	state.Time += float64(simDt)
+	UpdateGravitationalWaves(state, cfg, float64(simDt))
 }
 
 func computeBarnesHutAccelerations(state *SimState, cfg *Config) ([]Vector3, int64) {
@@ -250,7 +253,8 @@ func handleRocheBreakup(state *SimState, cfg *Config) {
 	}
 }
 
-func handleCollisions(state *SimState, mode CollisionMode) {
+func handleCollisions(state *SimState, cfg *Config) {
+	mode := cfg.Collision
 	if mode == CollisionGhost {
 		return
 	}
@@ -289,6 +293,9 @@ func handleCollisions(state *SimState, mode CollisionMode) {
 				dist := float32(math.Sqrt(float64(distSq)))
 				if mode == CollisionMerge {
 					// Inelastic merge: conserve momentum & volume
+					if cfg.ShowGravitationalWaves {
+						EmitGravitationalWaveBurst(state, cfg, b1, b2)
+					}
 					totalMass := b1.Mass + b2.Mass
 					if totalMass > 0 {
 						b1.Velocity.X = float32((float64(b1.Velocity.X)*b1.Mass + float64(b2.Velocity.X)*b2.Mass) / totalMass)

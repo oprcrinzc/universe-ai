@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"path/filepath"
+	"strings"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
@@ -27,6 +28,10 @@ func DrawUI(state *SimState, cfg *Config, camera *OrbitCamera, screenW, screenH 
 	// 2. Selected Body Inspector Panel (Right side)
 	if state.SelectedBodyID != -1 {
 		if drawInspectorPanel(state, cfg, camera, screenW, screenH, mousePos) {
+			mouseCaptured = true
+		}
+	} else if state.SelectedLagrangeIndex > 0 {
+		if drawLagrangeInspectorPanel(state, cfg, camera, screenW, screenH, mousePos) {
 			mouseCaptured = true
 		}
 	}
@@ -57,12 +62,19 @@ func DrawUI(state *SimState, cfg *Config, camera *OrbitCamera, screenW, screenH 
 		}
 	}
 
-	// 6. FPS & Physics Telemetry HUD (Top Left)
-	hudW := drawStatsHUD(state, cfg, screenW)
+	// 6. FPS & Physics Telemetry HUD (Top Left / Responsive in 2D Mode)
+	hudW := drawStatsHUD(state, cfg, screenW, screenH)
 
 	// 7. Temporary Notification Banner (Responsive placement to prevent overlapping)
 	if cfg.NotificationText != "" && cfg.NotificationTimer > 0 {
-		drawNotificationToast(state, cfg, screenW, hudW, state.SelectedBodyID != -1)
+		drawNotificationToast(state, cfg, screenW, screenH, hudW, state.SelectedBodyID != -1)
+	}
+
+	// 8. Gravitational Wave / LIGO Observatory HUD Card
+	if cfg.ShowGravitationalWaves {
+		if drawLIGOObservatoryHUD(state, cfg, screenW, screenH, mousePos) {
+			mouseCaptured = true
+		}
 	}
 
 	return mouseCaptured
@@ -104,10 +116,10 @@ func IsMouseOverUI(state *SimState, cfg *Config, screenW, screenH int32, mousePo
 	}
 
 	// 7. Inspector panel
-	if state.SelectedBodyID != -1 {
+	if state.SelectedBodyID != -1 || state.SelectedLagrangeIndex > 0 {
 		panelW := float32(310)
 		panelX := float32(screenW) - panelW - 12
-		panelRec := rl.NewRectangle(panelX, 52, panelW, 610)
+		panelRec := rl.NewRectangle(panelX, 52, panelW, 680)
 		if rl.CheckCollisionPointRec(mousePos, panelRec) {
 			return true
 		}
@@ -122,7 +134,40 @@ func IsMouseOverUI(state *SimState, cfg *Config, screenW, screenH int32, mousePo
 		}
 	}
 
+	// 9. LIGO Observatory HUD
+	if cfg.ShowGravitationalWaves {
+		ligoRec := rl.NewRectangle(14, float32(screenH)-48-148, 274, 142)
+		if rl.CheckCollisionPointRec(mousePos, ligoRec) {
+			return true
+		}
+	}
+
+	// 10. Stats HUD (Top Left or floating in 2D)
+	if cfg.ShowStatsHUD {
+		badgeX := float32(12)
+		badgeY := float32(54)
+		if cfg.Offload3D || cfg.Viewport2DFullscreen {
+			vx, vy, _, _ := get2DViewportRect(state, cfg, screenW, screenH)
+			badgeX = float32(vx + 12)
+			badgeY = float32(vy) + 32 + 28 + 8
+		}
+		hudRec := rl.NewRectangle(badgeX, badgeY, 450, 40)
+		if rl.CheckCollisionPointRec(mousePos, hudRec) {
+			return true
+		}
+	}
+
 	return false
+}
+
+// DrawTooltip draws a floating dark pill tooltip with high-contrast text and border
+func DrawTooltip(text string, x, y int32) {
+	tW := MeasureTextUI(text, FontSizeSmall)
+	tH := float32(20)
+	rec := rl.NewRectangle(float32(x), float32(y), tW+14, tH)
+	rl.DrawRectangleRec(rec, rl.NewColor(12, 18, 30, 245))
+	rl.DrawRectangleLinesEx(rec, 1.0, rl.NewColor(60, 140, 220, 220))
+	DrawTextUI(text, x+7, y+4, FontSizeSmall, rl.RayWhite)
 }
 
 func drawButton(rec rl.Rectangle, text string, active, hovered bool, baseCol rl.Color) bool {
@@ -293,7 +338,7 @@ func drawTopBar(state *SimState, cfg *Config, camera *OrbitCamera, screenW int32
 	x += 10
 
 	// Action buttons aligned to right with distinct spacing
-	helpW := float32(30)
+	helpW := float32(56)
 	resetW := float32(58)
 	archW := float32(72)
 	saveW := float32(56)
@@ -301,8 +346,12 @@ func drawTopBar(state *SimState, cfg *Config, camera *OrbitCamera, screenW int32
 
 	rx := float32(screenW) - 12 - helpW
 	helpRec := rl.NewRectangle(rx, btnY, helpW, btnH)
-	if drawButton(helpRec, "?", cfg.ShowHelp, rl.CheckCollisionPointRec(mousePos, helpRec), rl.NewColor(60, 60, 80, 255)) {
+	helpHover := rl.CheckCollisionPointRec(mousePos, helpRec)
+	if drawButton(helpRec, "Help", cfg.ShowHelp, helpHover, rl.NewColor(50, 60, 85, 255)) {
 		cfg.ShowHelp = !cfg.ShowHelp
+	}
+	if helpHover {
+		DrawTooltip("Manual & Keyboard Shortcuts (H)", int32(rx-130), int32(btnY+btnH+6))
 	}
 
 	rx -= resetW + btnGap
@@ -341,6 +390,26 @@ func drawTopBar(state *SimState, cfg *Config, camera *OrbitCamera, screenW int32
 			cfg.NotificationText = "Camera panel: CLOSED"
 		}
 		cfg.NotificationTimer = 1.2
+	}
+
+	offW := float32(92)
+	rx -= offW + btnGap
+	offRec := rl.NewRectangle(rx, btnY, offW, btnH)
+	offText := "2D Offload"
+	offCol := rl.NewColor(30, 75, 85, 255)
+	if cfg.Offload3D {
+		offText = "3D OFF (2D)"
+		offCol = rl.NewColor(0, 140, 140, 255)
+	}
+	if drawButton(offRec, offText, cfg.Offload3D, rl.CheckCollisionPointRec(mousePos, offRec), offCol) {
+		cfg.Offload3D = !cfg.Offload3D
+		if cfg.Offload3D {
+			cfg.Show2DViewport = true
+			cfg.NotificationText = "3D Render Offloaded: 2D Main Viewport Active"
+		} else {
+			cfg.NotificationText = "3D Render Restored: Standard Mode"
+		}
+		cfg.NotificationTimer = 2.0
 	}
 
 	rightEdgeLimit := rx - 12
@@ -996,6 +1065,41 @@ func drawInspectorPanel(state *SimState, cfg *Config, camera *OrbitCamera, scree
 	}
 	y += 30
 
+	// Lagrange Satellites (if secondary in CR3BP)
+	prim, sec := GetLagrangePair(state)
+	if prim != nil && sec != nil && sec.ID == body.ID && cfg.ShowLagrangePoints {
+		rl.DrawLineEx(rl.NewVector2(panelX+14, y), rl.NewVector2(panelX+panelW-14, y), 1, rl.NewColor(55, 75, 110, 200))
+		y += 6
+		DrawTextBoldUI("LAGRANGE EQUILIBRIUM (CR3BP)", int32(panelX+14), int32(y), FontSizeRegular, rl.NewColor(255, 220, 100, 255))
+		y += 18
+
+		pts := ComputeLagrangePoints(prim, sec, cfg.G)
+		lBtnW := (panelW - 28 - 16) / 5
+		for i := 0; i < 5; i++ {
+			btnRec := rl.NewRectangle(panelX+14+float32(i)*(lBtnW+4), y, lBtnW, 20)
+			lName := fmt.Sprintf("L%d", i+1)
+			active := state.SelectedLagrangeIndex == i+1
+			col := rl.NewColor(40, 60, 90, 255)
+			if drawButton(btnRec, lName, active, rl.CheckCollisionPointRec(mousePos, btnRec), col) {
+				state.SelectedLagrangeIndex = i + 1
+				cfg.NotificationText = fmt.Sprintf("Inspecting %s", pts[i].Name)
+				cfg.NotificationTimer = 2.0
+			}
+		}
+		y += 24
+		// Quick Spawn Probe buttons
+		halfLBtnW := (panelW - 34) / 2
+		spL1Rec := rl.NewRectangle(panelX+14, y, halfLBtnW, 20)
+		if drawButton(spL1Rec, "+ Probe L1", false, rl.CheckCollisionPointRec(mousePos, spL1Rec), rl.NewColor(35, 75, 110, 255)) {
+			SpawnProbeAtLagrange(state, cfg, pts[0], fmt.Sprintf("%s L1", sec.Name))
+		}
+		spL2Rec := rl.NewRectangle(panelX+20+halfLBtnW, y, halfLBtnW, 20)
+		if drawButton(spL2Rec, "+ Probe L2", false, rl.CheckCollisionPointRec(mousePos, spL2Rec), rl.NewColor(35, 75, 110, 255)) {
+			SpawnProbeAtLagrange(state, cfg, pts[1], fmt.Sprintf("%s L2", sec.Name))
+		}
+		y += 26
+	}
+
 	// Delete Body
 	delRec := rl.NewRectangle(panelX+14, y, panelW-28, 24)
 	if drawButton(delRec, "DELETE BODY", false, rl.CheckCollisionPointRec(mousePos, delRec), rl.NewColor(120, 30, 30, 255)) {
@@ -1005,6 +1109,138 @@ func drawInspectorPanel(state *SimState, cfg *Config, camera *OrbitCamera, scree
 		state.FollowSelected = false
 		cfg.NotificationText = fmt.Sprintf("Deleted body '%s'", name)
 		cfg.NotificationTimer = 2.0
+	}
+
+	return mouseInside
+}
+
+// drawLagrangeInspectorPanel renders full telemetry and interactive spawn actions for the selected Lagrange equilibrium point
+func drawLagrangeInspectorPanel(state *SimState, cfg *Config, camera *OrbitCamera, screenW, screenH int32, mousePos rl.Vector2) bool {
+	primary, secondary := GetLagrangePair(state)
+	if primary == nil || secondary == nil || state.SelectedLagrangeIndex < 1 || state.SelectedLagrangeIndex > 5 {
+		state.SelectedLagrangeIndex = 0
+		return false
+	}
+
+	pts := ComputeLagrangePoints(primary, secondary, cfg.G)
+	idx := state.SelectedLagrangeIndex - 1
+	pt := pts[idx]
+
+	panelW := float32(310)
+	panelH := float32(420)
+	panelX := float32(screenW) - panelW - 12
+	panelY := float32(52)
+
+	panelRec := rl.NewRectangle(panelX, panelY, panelW, panelH)
+	rl.DrawRectangleRec(panelRec, rl.NewColor(16, 22, 36, 248))
+	rl.DrawRectangleLinesEx(panelRec, 1.5, rl.NewColor(55, 85, 130, 255))
+
+	mouseInside := rl.CheckCollisionPointRec(mousePos, panelRec)
+
+	// Panel Title
+	DrawTextBoldUI("LAGRANGE EQUILIBRIUM POINT", int32(panelX+14), int32(panelY+12), FontSizeHeader, rl.Gold)
+
+	// Close button [X]
+	closeRec := rl.NewRectangle(panelX+panelW-30, panelY+8, 22, 22)
+	if drawButton(closeRec, "X", false, rl.CheckCollisionPointRec(mousePos, closeRec), rl.NewColor(80, 30, 30, 255)) {
+		state.SelectedLagrangeIndex = 0
+		return true
+	}
+
+	y := panelY + 36
+
+	// Point Badge Name
+	colors := [5]rl.Color{
+		rl.NewColor(255, 220, 50, 255),  // L1 Gold
+		rl.NewColor(80, 220, 255, 255),  // L2 Sky Cyan
+		rl.NewColor(255, 120, 80, 255),  // L3 Coral
+		rl.NewColor(120, 255, 180, 255), // L4 Emerald
+		rl.NewColor(255, 180, 120, 255), // L5 Amber
+	}
+	col := colors[idx]
+	statBadge := "UNSTABLE SADDLE"
+	statCol := rl.NewColor(255, 140, 100, 255)
+	if pt.Stable {
+		statBadge = "STABLE LIBRA"
+		statCol = rl.NewColor(100, 240, 160, 255)
+	}
+
+	// Point Name Box
+	nameRec := rl.NewRectangle(panelX+14, y, panelW-28, 26)
+	rl.DrawRectangleRec(nameRec, rl.NewColor(22, 32, 52, 240))
+	rl.DrawRectangleLinesEx(nameRec, 1.0, col)
+	DrawTextBoldUI(pt.Name, int32(panelX+20), int32(y+5), FontSizeHeader, col)
+	y += 32
+
+	// System Context
+	sysText := fmt.Sprintf("System: %s <-> %s", primary.Name, secondary.Name)
+	DrawTextUI(sysText, int32(panelX+14), int32(y), FontSizeTelemetry, rl.NewColor(200, 225, 255, 240))
+	y += 18
+
+	// Stability status
+	DrawTextUI(fmt.Sprintf("Stability: %s", statBadge), int32(panelX+14), int32(y), FontSizeTelemetry, statCol)
+	y += 22
+
+	// Position coordinates
+	DrawTextBoldUI("CARTESIAN EQUILIBRIUM COORDINATES", int32(panelX+14), int32(y), FontSizeRegular, rl.NewColor(160, 205, 250, 255))
+	y += 18
+	posStr := fmt.Sprintf("X: %8.2f  Y: %8.2f  Z: %8.2f", pt.Position.X, pt.Position.Y, pt.Position.Z)
+	DrawTextUI(posStr, int32(panelX+14), int32(y), FontSizeTelemetry, rl.White)
+	y += 18
+
+	// Orbital Velocity
+	velMag := rl.Vector3Length(pt.Velocity)
+	velStr := fmt.Sprintf("Vx: %7.2f  Vy: %7.2f  Vz: %7.2f  (|V|: %.2f)", pt.Velocity.X, pt.Velocity.Y, pt.Velocity.Z, velMag)
+	DrawTextUI(velStr, int32(panelX+14), int32(y), FontSizeTelemetry, rl.NewColor(180, 230, 255, 240))
+	y += 22
+
+	// Effective Potential
+	DrawTextUI(fmt.Sprintf("Effective Potential: %.2f J/kg", pt.Potential), int32(panelX+14), int32(y), FontSizeTelemetry, rl.NewColor(255, 220, 140, 240))
+	y += 28
+
+	// Action 1: Spawn Probe
+	spRec := rl.NewRectangle(panelX+14, y, panelW-28, 26)
+	if drawButton(spRec, fmt.Sprintf("Launch Satellite / Probe at %s", pt.Name[:2]), false, rl.CheckCollisionPointRec(mousePos, spRec), rl.NewColor(35, 95, 140, 255)) {
+		SpawnProbeAtLagrange(state, cfg, pt, fmt.Sprintf("%s %s", secondary.Name, pt.Name[:2]))
+	}
+	y += 32
+
+	// Action 2: If L4 or L5, offer Swarm deployment
+	if idx == 3 || idx == 4 {
+		swarmName := "Trojan"
+		if idx == 4 {
+			swarmName = "Greek"
+		}
+		swRec := rl.NewRectangle(panelX+14, y, panelW-28, 26)
+		if drawButton(swRec, fmt.Sprintf("Deploy %s Libration Swarm (12x)", swarmName), false, rl.CheckCollisionPointRec(mousePos, swRec), rl.NewColor(45, 110, 80, 255)) {
+			SpawnLagrangeSwarm(state, cfg, primary, secondary, pt, 12)
+		}
+		y += 32
+	}
+
+	// Action 3: Focus & Track
+	halfW := (panelW - 34) / 2
+	focRec := rl.NewRectangle(panelX+14, y, halfW, 24)
+	if drawButton(focRec, "Focus View (F)", false, rl.CheckCollisionPointRec(mousePos, focRec), rl.NewColor(40, 65, 95, 255)) {
+		camera.Target = pt.Position
+		cfg.NotificationText = fmt.Sprintf("Camera focused on %s", pt.Name)
+		cfg.NotificationTimer = 1.5
+	}
+	followRec := rl.NewRectangle(panelX+20+halfW, y, halfW, 24)
+	followText := "Track (C): OFF"
+	if state.FollowSelected {
+		followText = "Track (C): ON"
+	}
+	if drawButton(followRec, followText, state.FollowSelected, rl.CheckCollisionPointRec(mousePos, followRec), rl.NewColor(50, 70, 95, 255)) {
+		state.FollowSelected = !state.FollowSelected
+		if state.FollowSelected {
+			state.FollowBarycenter = false
+			cfg.CinematicCamera = false
+			cfg.NotificationText = fmt.Sprintf("Tracking %s: ON", pt.Name)
+		} else {
+			cfg.NotificationText = fmt.Sprintf("Tracking %s: OFF", pt.Name)
+		}
+		cfg.NotificationTimer = 1.5
 	}
 
 	return mouseInside
@@ -1098,32 +1334,43 @@ func drawBottomBar(state *SimState, cfg *Config, screenW, screenH int32, mousePo
 		rl.DrawRectangleLinesEx(hintRec, 1.2, rl.Gold)
 		DrawTextBoldUI(hintText, 24, int32(barY-27), FontSizeRegular, rl.Yellow)
 	} else {
+		gpuBtnName := "GPU N²"
+		gpuBtnCol := rl.NewColor(20, 80, 75, 255)
+		if IsGPUComputeAvailable() {
+			gpuBtnName = "RTX 3050 Ti"
+			gpuBtnCol = rl.NewColor(20, 110, 80, 255)
+		}
+
 		// View & Physics toggles
 		toggles := []struct {
 			name  string
 			value *bool
 			col   rl.Color
 		}{
+			{"Spacetime", &cfg.ShowPotentialGrid, rl.NewColor(35, 75, 115, 255)},
+			{"GW Waves", &cfg.ShowGravitationalWaves, rl.NewColor(85, 45, 135, 255)},
+			{"3D Vectors", &cfg.ShowVectorField, rl.NewColor(35, 95, 80, 255)},
+			{"Dense 3D", &cfg.DenseVectorField, rl.NewColor(30, 110, 85, 255)},
 			{"2D Map", &cfg.Show2DViewport, rl.NewColor(30, 85, 120, 255)},
-			{"2D Labels", &cfg.Show2DLabels, rl.NewColor(35, 75, 110, 255)},
+			{"2D Offload", &cfg.Offload3D, rl.NewColor(20, 110, 110, 255)},
+			{"2D Icons", &cfg.Show2DIcons, rl.NewColor(25, 95, 120, 255)},
+			{"2D Circles", &cfg.Show2DCircles, rl.NewColor(20, 100, 120, 255)},
+			{"Lagrange", &cfg.ShowLagrangePoints, rl.NewColor(110, 85, 30, 255)},
 			{"Heatmap", &cfg.Show2DHeatmap, rl.NewColor(100, 60, 30, 255)},
 			{"3D Heatmap", &cfg.Show3DHeatmapPlane, rl.NewColor(90, 50, 35, 255)},
-			{"Lagrange", &cfg.ShowLagrangePoints, rl.NewColor(110, 85, 30, 255)},
-			{"GPU N²", &cfg.UseGPUCompute, rl.NewColor(20, 80, 75, 255)},
-			{"Barnes-Hut", &cfg.UseBarnesHut, rl.NewColor(30, 75, 70, 255)},
 			{"Trails", &cfg.ShowTrails, rl.NewColor(35, 45, 65, 255)},
 			{"Grid", &cfg.ShowGrid, rl.NewColor(35, 45, 65, 255)},
-			{"Spacetime", &cfg.ShowPotentialGrid, rl.NewColor(40, 70, 95, 255)},
-			{"Cinematic", &cfg.CinematicCamera, rl.NewColor(80, 60, 110, 255)},
-			{"Glow", &cfg.ParticleGlowMode, rl.NewColor(30, 85, 90, 255)},
-			{"Vectors", &cfg.ShowVectors, rl.NewColor(35, 45, 65, 255)},
-			{"VecField", &cfg.ShowVectorField, rl.NewColor(50, 75, 60, 255)},
-			{"Forces", &cfg.ShowForces, rl.NewColor(35, 45, 65, 255)},
-			{"Labels", &cfg.ShowLabels, rl.NewColor(35, 45, 65, 255)},
-			{"Stars", &cfg.ShowStarfield, rl.NewColor(35, 45, 65, 255)},
-			{"Textures", &cfg.ShowTextures, rl.NewColor(40, 60, 80, 255)},
+			{"Barnes-Hut", &cfg.UseBarnesHut, rl.NewColor(30, 75, 70, 255)},
+			{gpuBtnName, &cfg.UseGPUCompute, gpuBtnCol},
 			{"1PN GR", &cfg.EnableRelativity, rl.NewColor(70, 45, 80, 255)},
 			{"Roche", &cfg.EnableRocheLimit, rl.NewColor(80, 50, 40, 255)},
+			{"Textures", &cfg.ShowTextures, rl.NewColor(40, 60, 80, 255)},
+			{"Labels", &cfg.ShowLabels, rl.NewColor(35, 45, 65, 255)},
+			{"Vectors", &cfg.ShowVectors, rl.NewColor(35, 45, 65, 255)},
+			{"Cinematic", &cfg.CinematicCamera, rl.NewColor(80, 60, 110, 255)},
+			{"Glow", &cfg.ParticleGlowMode, rl.NewColor(30, 85, 90, 255)},
+			{"Forces", &cfg.ShowForces, rl.NewColor(35, 45, 65, 255)},
+			{"Stars", &cfg.ShowStarfield, rl.NewColor(35, 45, 65, 255)},
 		}
 
 		for _, tg := range toggles {
@@ -1134,12 +1381,49 @@ func drawBottomBar(state *SimState, cfg *Config, screenW, screenH int32, mousePo
 			tRec := rl.NewRectangle(x, btnY, tW, btnH)
 			if drawButton(tRec, tg.name, *tg.value, rl.CheckCollisionPointRec(mousePos, tRec), tg.col) {
 				*tg.value = !*tg.value
+				if tg.name == "Dense 3D" && *tg.value {
+					cfg.ShowVectorField = true
+				}
+				if tg.name == "GW Waves" && *tg.value {
+					cfg.ShowPotentialGrid = true
+				}
 				status := "OFF"
 				if *tg.value {
 					status = "ON"
 				}
-				cfg.NotificationText = fmt.Sprintf("%s: %s", tg.name, status)
-				cfg.NotificationTimer = 1.2
+				if tg.name == gpuBtnName {
+					if *tg.value {
+						cfg.NotificationText = fmt.Sprintf("NVIDIA GPU Acceleration: ON (%s | O(N²) SSBO)", GetGPUDeviceName())
+					} else {
+						cfg.NotificationText = "GPU Acceleration: OFF (Switched to CPU Physics)"
+					}
+					cfg.NotificationTimer = 2.5
+				} else if tg.name == "2D Offload" {
+					if *tg.value {
+						cfg.Show2DViewport = true
+						cfg.NotificationText = "3D Render Offloaded: 2D Main Viewport Active"
+					} else {
+						cfg.NotificationText = "3D Render Restored: Standard Mode"
+					}
+					cfg.NotificationTimer = 2.0
+				} else if tg.name == "2D Icons" {
+					if *tg.value {
+						cfg.NotificationText = "2D Object Icons: ON (Celestial Pictures / Glyphs Active)"
+					} else {
+						cfg.NotificationText = "2D Object Icons: OFF (Clear Circles Mode)"
+					}
+					cfg.NotificationTimer = 2.0
+				} else if tg.name == "2D Circles" {
+					if *tg.value {
+						cfg.NotificationText = "2D Circles & Dots: ON"
+					} else {
+						cfg.NotificationText = "2D Circles & Dots: OFF"
+					}
+					cfg.NotificationTimer = 1.8
+				} else {
+					cfg.NotificationText = fmt.Sprintf("%s: %s", tg.name, status)
+					cfg.NotificationTimer = 1.2
+				}
 			}
 			x += tW + 4
 		}
@@ -1182,13 +1466,25 @@ func drawBottomBar(state *SimState, cfg *Config, screenW, screenH int32, mousePo
 	return mouseInside
 }
 
-func drawStatsHUD(state *SimState, cfg *Config, screenW int32) float32 {
+func drawStatsHUD(state *SimState, cfg *Config, screenW, screenH int32) float32 {
+	if !cfg.ShowStatsHUD {
+		return 0
+	}
+
 	fps := rl.GetFPS()
 	bodyCount := len(state.Bodies)
 
 	method := "Direct CPU O(N^2)"
-	if cfg.UseGPUCompute && IsGPUComputeAvailable() {
-		method = "GPU Compute (N² Exact)"
+	gpuActive := cfg.UseGPUCompute && IsGPUComputeAvailable()
+	if gpuActive {
+		gpuDev := GetGPUDeviceName()
+		if strings.Contains(gpuDev, "RTX 3050 Ti") {
+			gpuDev = "NVIDIA RTX 3050 Ti"
+		} else if strings.Contains(gpuDev, "NVIDIA") {
+			gpuDev = "NVIDIA GPU"
+		}
+		gpuTime := GetGPUDispatchTimeMs()
+		method = fmt.Sprintf("GPU: %s (N² SSBO %.1fms)", gpuDev, gpuTime)
 	} else if cfg.UseBarnesHut || bodyCount >= 350 {
 		method = fmt.Sprintf("Barnes-Hut (th=%.2f)", cfg.BarnesHutTheta)
 	}
@@ -1220,20 +1516,58 @@ func drawStatsHUD(state *SimState, cfg *Config, screenW int32) float32 {
 	}
 	if cfg.ShowPotentialGrid {
 		res := cfg.SpacetimeResolution
-		if res < 36 {
+		if res <= 0 {
 			res = 120
 		}
 		scale := cfg.SpacetimeScale
 		if scale <= 0 {
 			scale = 1.0
 		}
-		line2 += fmt.Sprintf("  |  Spacetime (%.2fx, %dx%d)", scale, res, res)
+		span := StaticBaseSpacetimeSpan * scale
+		line2 += fmt.Sprintf("  |  Spacetime (Span: %.0f, %dx%d)", span, res, res)
+	}
+	if cfg.ShowGravitationalWaves {
+		line2 += "  |  GW/LIGO [J]"
 	}
 	if cfg.ShowVectorField {
-		line2 += "  |  VectorField (32x32)"
+		if cfg.DenseVectorField {
+			line2 += "  |  Dense 3D Vectors"
+		} else {
+			line2 += "  |  VectorField (32x32)"
+		}
 	}
 	if cfg.ParticleGlowMode {
 		line2 += "  |  Velocity Glow"
+	}
+
+	badgeX := float32(12)
+	badgeY := float32(54)
+	badgeH := float32(40)
+
+	// If 2D Viewport is running as Main Viewport (Offload 3D or Fullscreen),
+	// position the Stats HUD strictly below the 2D Viewport's top header and toolbar
+	// so it NEVER blocks the viewport title or any toolbar buttons!
+	if cfg.Offload3D || cfg.Viewport2DFullscreen {
+		vx, vy, _, _ := get2DViewportRect(state, cfg, screenW, screenH)
+		headerH := float32(32)
+		toolbarH := float32(28)
+		badgeX = float32(vx + 12)
+		badgeY = float32(vy) + headerH + toolbarH + 8 // 48 + 32 + 28 + 8 = 116 (completely clear of toolbar buttons!)
+	} else if cfg.Show2DViewport {
+		// Docked mode on the right side: ensure badge doesn't overlap the docked 2D viewport
+		vx, _, _, _ := get2DViewportRect(state, cfg, screenW, screenH)
+		rightBound := float32(vx) - 8
+		w1 := MeasureTextUI(line1, FontSizeTelemetry)
+		w2 := MeasureTextUI(line2, FontSizeTelemetry)
+		maxW := w1
+		if w2 > maxW {
+			maxW = w2
+		}
+		if badgeX+maxW+36 > rightBound && rightBound > badgeX+200 {
+			// Compact strings to fit cleanly before the docked 2D viewport
+			line1 = fmt.Sprintf("FPS: %d  |  Bodies: %d  |  Phys: %.1fms  |  %s", fps, bodyCount, cfg.PhysicsTimeMs, method)
+			line2 = fmt.Sprintf("%s  |  G: %.1f  |  SubSteps: %d", intStr, cfg.G, cfg.SubSteps)
+		}
 	}
 
 	w1 := MeasureTextUI(line1, FontSizeTelemetry)
@@ -1242,15 +1576,20 @@ func drawStatsHUD(state *SimState, cfg *Config, screenW int32) float32 {
 	if w2 > maxW {
 		maxW = w2
 	}
-	badgeW := maxW + 24
-	badgeH := float32(40)
-	badgeX := float32(12)
-	badgeY := float32(54)
+	badgeW := maxW + 40
+
+	// Clamp badge width to screen margin
+	maxAllowedW := float32(screenW) - badgeX - 12
+	if badgeW > maxAllowedW {
+		badgeW = maxAllowedW
+	}
 
 	badgeRec := rl.NewRectangle(badgeX, badgeY, badgeW, badgeH)
 	rl.DrawRectangleRec(badgeRec, rl.NewColor(16, 22, 34, 225))
 	borderCol := rl.NewColor(55, 80, 125, 220)
-	if fps >= 130 {
+	if gpuActive {
+		borderCol = rl.NewColor(40, 200, 130, 240)
+	} else if fps >= 130 {
 		borderCol = rl.NewColor(60, 190, 120, 220)
 	}
 	rl.DrawRectangleLinesEx(badgeRec, 1.2, borderCol)
@@ -1264,16 +1603,46 @@ func drawStatsHUD(state *SimState, cfg *Config, screenW int32) float32 {
 
 	DrawTextUI(line1, int32(badgeX+10), int32(badgeY+5), FontSizeTelemetry, fpsCol)
 	DrawTextUI(line2, int32(badgeX+10), int32(badgeY+21), FontSizeTelemetry, rl.NewColor(160, 205, 245, 220))
+
+	// Close / Dismiss button [×] on the top-right of the stats badge
+	closeRec := rl.NewRectangle(badgeX+badgeW-20, badgeY+4, 16, 16)
+	mPos := rl.GetMousePosition()
+	isCloseHover := rl.CheckCollisionPointRec(mPos, closeRec)
+	closeCol := rl.NewColor(130, 160, 200, 200)
+	if isCloseHover {
+		closeCol = rl.Red
+		rl.DrawRectangleRec(closeRec, rl.NewColor(50, 25, 30, 230))
+		rl.DrawRectangleLinesEx(closeRec, 1.0, rl.Red)
+		if rl.IsMouseButtonPressed(rl.MouseLeftButton) {
+			cfg.ShowStatsHUD = false
+			cfg.NotificationText = "Stats HUD: Hidden (Press F11 or [HUD] to restore)"
+			cfg.NotificationTimer = 2.0
+		}
+	}
+	DrawTextUI("x", int32(closeRec.X+4), int32(closeRec.Y+1), FontSizeTelemetry, closeCol)
+
 	return badgeW
 }
 
-func drawNotificationToast(state *SimState, cfg *Config, screenW int32, hudW float32, inspectorOpen bool) {
+func drawNotificationToast(state *SimState, cfg *Config, screenW, screenH int32, hudW float32, inspectorOpen bool) {
 	text := cfg.NotificationText
 	textW := MeasureTextBoldUI(text, FontSizeHeader)
 	pillW := textW + 36
 	pillH := float32(32)
 
-	// Available space calculation to prevent any overlapping
+	// If 2D Viewport is running as Main Viewport (Offload 3D or Fullscreen),
+	// place toast centered near bottom of viewport above status bar so it NEVER blocks top toolbar!
+	if cfg.Offload3D || cfg.Viewport2DFullscreen {
+		pillX := (float32(screenW) - pillW) * 0.5
+		pillY := float32(screenH) - 48 - 22 - 38 // 38px above the 22px status bar and 48px bottom bar
+		rect := rl.NewRectangle(pillX, pillY, pillW, pillH)
+		rl.DrawRectangleRec(rect, rl.NewColor(15, 20, 32, 245))
+		rl.DrawRectangleLinesEx(rect, 1.5, rl.Gold)
+		DrawTextBoldUI(text, int32(pillX+18), int32(pillY+7), FontSizeHeader, rl.Yellow)
+		return
+	}
+
+	// Available space calculation to prevent any overlapping in standard/docked mode
 	leftLimit := float32(14)
 	if hudW > 0 {
 		leftLimit = 14 + hudW + 14
@@ -1284,8 +1653,8 @@ func drawNotificationToast(state *SimState, cfg *Config, screenW int32, hudW flo
 		rightLimit = float32(screenW) - 310 - 24
 	}
 	// Avoid overlapping 2D Viewport when docked on the right
-	if cfg.Show2DViewport && !cfg.Viewport2DFullscreen {
-		vx, _, _, _ := get2DViewportRect(state, cfg, screenW, 1080)
+	if cfg.Show2DViewport && !cfg.Viewport2DFullscreen && !cfg.Offload3D {
+		vx, _, _, _ := get2DViewportRect(state, cfg, screenW, screenH)
 		if float32(vx)-14 < rightLimit {
 			rightLimit = float32(vx) - 14
 		}
@@ -1429,19 +1798,26 @@ func drawHelpModal(cfg *Config, screenW, screenH int32, mousePos rl.Vector2) boo
 		"  * Spawner: Stars, Planets, Asteroid Ring, Swarm (50x), Mini-Galaxy (150x), Collapse Cloud (100x)",
 		"",
 		"VISUALIZATION & PHYSICS FEATURES:",
+		"  * J: Toggle Gravitational Waves & LIGO Detector (Einstein quadrupole metric ripples)",
+		"  * O: Toggle 3D Vector Field (Standard -> Ultra-Dense 3,448 volumetric vectors -> Off)",
 		"  * M: Toggle 2D Tactical Viewport (Minimap / Fullscreen docked on right)",
 		"  * K: Toggle 2D Map Celestial Labels (Clean celestial circles vs annotated tags)",
 		"  * H: Toggle Gravitational Heatmap (2D Viewport & 3D Orbital Plane Grid)",
+		"  * Shift+H / Alt+H or Alt+[ / Alt+]: Step 2D Heatmap Resolution (16 up to 200 cols)",
 		"  * I: Cycle Symplectic Integrator (Yoshida 4th-Order O(dt^4) vs Velocity Verlet 2nd-Order)",
 		"  * U: Toggle GPU Compute Shader Acceleration (NVIDIA/OpenGL 4.3 SSBO Direct N²)",
-		"  * O: Toggle Gravitational 3D Vector Field (High-res 32x32 global vector needles)",
 		"  * P: Toggle 3D Spacetime Curvature Potential Grid (Einstein gravity wells)",
 		"  * [ / ]: Decrease / Increase Spacetime Grid Scale (0.5x - 3.5x)",
+		"  * { / } or 2D Toolbar [RES-]/[RES+]: Step Spacetime / 2D Heatmap Resolution",
+		"  * Shift+T or Toolbar [TRL]: Toggle Orbit Reference Trails",
+		"  * Shift+C or Toolbar [CIR]: Toggle 2D Body Circles and Center Dots",
+		"  * Y or Toolbar [ICON]: Toggle 2D Celestial Object Icons / Clear Circles",
+		"  * V or Toolbar [VEC]: Toggle Object Velocity & Direction Vectors",
 		"  * L: Toggle Particle Kinetic Velocity Color Glow",
 		"  * B: Toggle Barnes-Hut O(N log N) multi-threaded octree",
 		"  * G: Toggle 1PN General Relativity precession",
 		"",
-		"SHORTCUTS: Space (Pause) | M (2D Map) | K (2D Labels) | H (Heatmap) | I (Integrator) | U (GPU) | O (VecField) | 1-9, 0, F5-F10 | F12",
+		"SHORTCUTS: Space (Pause) | J (GW) | O (Vec) | M (2D Map) | K (LBL) | Y (ICON) | { / } (Res) | 1-9, 0, F5-F10",
 	}
 
 	y := int32(modalY + 48)
@@ -1452,6 +1828,111 @@ func drawHelpModal(cfg *Config, screenW, screenH int32, mousePos rl.Vector2) boo
 			DrawTextUI(l, int32(modalX+24), y, FontSizeTelemetry, rl.LightGray)
 		}
 		y += 20
+	}
+
+	return mouseInside
+}
+
+// drawLIGOObservatoryHUD renders the high-tech Laser Interferometer Gravitational-Wave Observatory
+// HUD card with live quadrupole strain, frequency, gravitational power, and real-time waveform oscilloscope.
+func drawLIGOObservatoryHUD(state *SimState, cfg *Config, screenW, screenH int32, mousePos rl.Vector2) bool {
+	cardW := float32(274)
+	cardH := float32(142)
+	cardX := float32(14)
+	cardY := float32(screenH) - 48 - cardH - 6
+
+	cardRec := rl.NewRectangle(cardX, cardY, cardW, cardH)
+	mouseInside := rl.CheckCollisionPointRec(mousePos, cardRec)
+
+	// Panel background & neon relativistic border
+	rl.DrawRectangleRec(cardRec, rl.NewColor(14, 18, 28, 245))
+	burstActive := len(state.GWBursts) > 0
+	borderColor := rl.NewColor(90, 60, 150, 240)
+	if burstActive {
+		pulse := float32(math.Sin(float64(rl.GetTime()*8.0)))*0.5 + 0.5
+		borderColor = rl.NewColor(uint8(180+pulse*75), 40, uint8(220+pulse*35), 255)
+	}
+	rl.DrawRectangleLinesEx(cardRec, 1.4, borderColor)
+
+	// Header
+	DrawTextBoldUI("LIGO / VIRGO OBSERVATORY", int32(cardX+10), int32(cardY+8), FontSizeHeader, rl.NewColor(80, 220, 255, 255))
+
+	// Status indicator
+	statusText := "[ONLINE] 4.0km Fabry-Perot Arms"
+	statusCol := rl.NewColor(80, 240, 140, 255)
+	if burstActive {
+		statusText = "[EVENT] BURST DETECTED!"
+		statusCol = rl.NewColor(255, 70, 180, 255)
+	}
+	DrawTextUI(statusText, int32(cardX+10), int32(cardY+24), FontSizeTelemetry, statusCol)
+
+	// Dismiss button [X]
+	closeRec := rl.NewRectangle(cardX+cardW-24, cardY+6, 18, 18)
+	if drawButton(closeRec, "X", false, rl.CheckCollisionPointRec(mousePos, closeRec), rl.NewColor(60, 30, 45, 255)) {
+		cfg.ShowGravitationalWaves = false
+		cfg.NotificationText = "Gravitational Waves: OFF"
+		cfg.NotificationTimer = 1.5
+		return true
+	}
+
+	// Telemetry row
+	strainStr := fmt.Sprintf("Strain h: %+.2e", state.LastGWStrain)
+	DrawTextBoldUI(strainStr, int32(cardX+10), int32(cardY+40), FontSizeSmall, rl.NewColor(255, 225, 90, 255))
+
+	freqStr := fmt.Sprintf("f: %.2f Hz", state.LastGWFreq)
+	DrawTextUI(freqStr, int32(cardX+168), int32(cardY+40), FontSizeSmall, rl.NewColor(160, 220, 255, 255))
+
+	powerStr := fmt.Sprintf("P_gw: %.2e W", state.LastGWPower)
+	DrawTextUI(powerStr, int32(cardX+10), int32(cardY+56), FontSizeTelemetry, rl.LightGray)
+
+	// Live Oscilloscope Waveform Box
+	scopeX := cardX + 8
+	scopeY := cardY + 74
+	scopeW := cardW - 16
+	scopeH := float32(58)
+	scopeRec := rl.NewRectangle(scopeX, scopeY, scopeW, scopeH)
+	rl.DrawRectangleRec(scopeRec, rl.NewColor(8, 10, 16, 255))
+	rl.DrawRectangleLinesEx(scopeRec, 1.0, rl.NewColor(40, 50, 75, 200))
+
+	// Center baseline
+	midY := scopeY + scopeH*0.5
+	rl.DrawLine(int32(scopeX), int32(midY), int32(scopeX+scopeW), int32(midY), rl.NewColor(30, 45, 65, 180))
+
+	// Oscilloscope plot from circular history buffer
+	nHist := len(state.GWWaveformHistory)
+	if nHist > 1 {
+		head := state.GWWaveformHead
+		stepX := scopeW / float32(nHist-1)
+
+		waveCol := rl.NewColor(60, 230, 255, 255)
+		if burstActive {
+			waveCol = rl.NewColor(255, 80, 190, 255)
+		}
+
+		for s := 0; s < nHist-1; s++ {
+			idx1 := (head + s) % nHist
+			idx2 := (head + s + 1) % nHist
+			v1 := state.GWWaveformHistory[idx1]
+			v2 := state.GWWaveformHistory[idx2]
+
+			// Scale & clamp to scope height
+			y1 := midY - v1*scopeH*2.0
+			y2 := midY - v2*scopeH*2.0
+			if y1 < scopeY+2 {
+				y1 = scopeY + 2
+			} else if y1 > scopeY+scopeH-2 {
+				y1 = scopeY + scopeH - 2
+			}
+			if y2 < scopeY+2 {
+				y2 = scopeY + 2
+			} else if y2 > scopeY+scopeH-2 {
+				y2 = scopeY + scopeH - 2
+			}
+
+			x1 := scopeX + float32(s)*stepX
+			x2 := scopeX + float32(s+1)*stepX
+			rl.DrawLine(int32(x1), int32(y1), int32(x2), int32(y2), waveCol)
+		}
 	}
 
 	return mouseInside

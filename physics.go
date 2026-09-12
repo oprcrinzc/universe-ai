@@ -345,7 +345,7 @@ func UpdatePhysics(state *SimState, cfg *Config, dt float32) {
 
 		// Handle collisions
 		if cfg.Collision != CollisionNone {
-			handleCollisions(state, cfg.Collision)
+			handleCollisions(state, cfg, cfg.Collision)
 		}
 	}
 
@@ -398,7 +398,7 @@ func UpdatePhysics(state *SimState, cfg *Config, dt float32) {
 }
 
 // handleCollisions resolves sphere collisions based on mode (Merge or Bounce)
-func handleCollisions(state *SimState, mode CollisionMode) {
+func handleCollisions(state *SimState, cfg *Config, mode CollisionMode) {
 	if mode == CollisionNone {
 		return
 	}
@@ -472,6 +472,11 @@ func handleCollisions(state *SimState, mode CollisionMode) {
 						state.SelectedBodyID = primary.ID
 					}
 
+					// Trigger high-energy gravitational wave burst upon significant celestial collision
+					if primary.Mass >= 0.2 || secondary.Mass >= 0.2 || primary.IsStar || secondary.IsStar || primary.TextureType == TextureBlackHole || secondary.TextureType == TextureBlackHole {
+						EmitGravitationalWaveBurst(state, cfg, primary, secondary)
+					}
+
 					merged[removeIdx] = true
 					if removeIdx == i {
 						break
@@ -541,7 +546,6 @@ func handleCollisions(state *SimState, mode CollisionMode) {
 		state.Bodies = newBodies
 	}
 }
-
 
 // FindPrimaryBody finds the most massive body (other than itself) or nearest heavy body
 func FindPrimaryBody(bodies []*Body, target *Body) *Body {

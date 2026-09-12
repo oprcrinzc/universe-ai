@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"math"
 	"runtime"
 	"sync"
 	"unsafe"
@@ -20,6 +21,9 @@ const (
 	glLinkStatus              = 0x8B82
 	glInfoLogLength           = 0x8B84
 	glShaderStorageBarrierBit = 0x00002000
+	glVendor                  = 0x1F00
+	glRenderer                = 0x1F01
+	glVersion                 = 0x1F02
 )
 
 // BodyDataGPU matches std430 alignment layout in the GLSL compute shader
@@ -34,6 +38,7 @@ type AccDataGPU struct {
 }
 
 // Shared-Memory Tiled GLSL 4.30 Compute Shader for Direct N-Body Gravity
+// Optimized with hardware reciprocal square root (inversesqrt) and hoisted G scaling
 const nbodyComputeShaderSource = `#version 430
 layout(local_size_x = 256, local_size_y = 1, local_size_z = 1) in;
 
@@ -84,31 +89,37 @@ void main() {
 
 				vec3 d = p2 - p1;
 				float distSq = dot(d, d) + softeningSq;
-				float dist = sqrt(distSq);
-				float invDist3 = 1.0 / (distSq * dist);
-				acc += d * (G * m2 * invDist3);
+				float invDist = inversesqrt(distSq);
+				float invDist3 = invDist * invDist * invDist;
+				acc += d * (m2 * invDist3);
 			}
 		}
 		barrier();
 	}
 
 	if (i < numBodies) {
-		accsOut[i] = vec4(acc, 0.0);
+		accsOut[i] = vec4(acc * G, 0.0);
 	}
 }
 `
 
 var (
-	gpuMu          sync.Mutex
-	gpuInitialized bool
-	gpuAvailable   bool
-	gpuProgram     uint32
-	gpuShader      uint32
-	gpuBufIn       uint32
-	gpuBufOut      uint32
-	gpuBufCapacity int
-	gpuBodiesCache []BodyDataGPU
-	gpuAccsCache   []AccDataGPU
+	gpuMu             sync.Mutex
+	gpuInitialized    bool
+	gpuAvailable      bool
+	gpuProgram        uint32
+	gpuShader         uint32
+	gpuBufIn          uint32
+	gpuBufOut         uint32
+	gpuBufCapacity    int
+	gpuBodiesCache    []BodyDataGPU
+	gpuAccsCache      []AccDataGPU
+	gpuResultsCache   []rl.Vector3
+	gpuRendererStr    string
+	gpuVendorStr      string
+	gpuVersionStr     string
+	gpuDispatchTimeMs float32
+	gpuLastDispatched int
 
 	// Uniform locations
 	locNumBodies   int32
@@ -116,6 +127,7 @@ var (
 	locSofteningSq int32
 
 	// Dynamically loaded OpenGL API bindings
+	fnGlGetString          func(name uint32) *byte
 	fnGlCreateShader       func(shaderType uint32) uint32
 	fnGlShaderSource       func(shader uint32, count int32, str **byte, length *int32)
 	fnGlCompileShader      func(shader uint32)
@@ -186,6 +198,7 @@ func InitGPUCompute() bool {
 	purego.RegisterLibFunc(&fnGlLinkProgram, libGL, "glLinkProgram")
 	purego.RegisterLibFunc(&fnGlGetProgramiv, libGL, "glGetProgramiv")
 	purego.RegisterLibFunc(&fnGlGetProgramInfoLog, libGL, "glGetProgramInfoLog")
+	purego.RegisterLibFunc(&fnGlGetString, libGL, "glGetString")
 	purego.RegisterLibFunc(&fnGlUseProgram, libGL, "glUseProgram")
 	purego.RegisterLibFunc(&fnGlGenBuffers, libGL, "glGenBuffers")
 	purego.RegisterLibFunc(&fnGlBindBuffer, libGL, "glBindBuffer")
@@ -202,6 +215,12 @@ func InitGPUCompute() bool {
 	purego.RegisterLibFunc(&fnGlUniform1i, libGL, "glUniform1i")
 	purego.RegisterLibFunc(&fnGlUniform1f, libGL, "glUniform1f")
 	purego.RegisterLibFunc(&fnGlFinish, libGL, "glFinish")
+
+	if fnGlGetString != nil {
+		gpuVendorStr = glString(fnGlGetString(glVendor))
+		gpuRendererStr = glString(fnGlGetString(glRenderer))
+		gpuVersionStr = glString(fnGlGetString(glVersion))
+	}
 
 	if fnGlCreateShader == nil || fnGlDispatchCompute == nil {
 		return false
@@ -221,6 +240,13 @@ func InitGPUCompute() bool {
 	var status int32
 	fnGlGetShaderiv(cs, glCompileStatus, &status)
 	if status == 0 {
+		var logLen int32
+		fnGlGetShaderiv(cs, glInfoLogLength, &logLen)
+		if logLen > 0 {
+			logBytes := make([]byte, logLen)
+			fnGlGetShaderInfoLog(cs, logLen, nil, &logBytes[0])
+			fmt.Printf("[InitGPUCompute] Shader compile error:\n%s\n", string(logBytes))
+		}
 		fnGlDeleteShader(cs)
 		return false
 	}
@@ -236,6 +262,13 @@ func InitGPUCompute() bool {
 
 	fnGlGetProgramiv(prog, glLinkStatus, &status)
 	if status == 0 {
+		var logLen int32
+		fnGlGetProgramiv(prog, glInfoLogLength, &logLen)
+		if logLen > 0 {
+			logBytes := make([]byte, logLen)
+			fnGlGetProgramInfoLog(prog, logLen, nil, &logBytes[0])
+			fmt.Printf("[InitGPUCompute] Program link error:\n%s\n", string(logBytes))
+		}
 		fnGlDeleteProgram(prog)
 		fnGlDeleteShader(cs)
 		return false
@@ -253,8 +286,47 @@ func InitGPUCompute() bool {
 	locSofteningSq = fnGlGetUniformLocation(prog, &cSoft[0])
 
 	gpuAvailable = true
-	fmt.Println("🪐 [GravitySim] GPU Compute Acceleration: ENABLED (NVIDIA/OpenGL 4.3 Compute Shader Active)")
+	devName := gpuRendererStr
+	if devName == "" {
+		devName = "Dedicated GPU Compute"
+	}
+	fmt.Printf("🪐 [GravitySim] GPU Compute Acceleration: ENABLED (%s | OpenGL 4.3 Compute Shader Active)\n", devName)
 	return true
+}
+
+func glString(ptr *byte) string {
+	if ptr == nil {
+		return ""
+	}
+	var res []byte
+	for p := ptr; *p != 0; p = (*byte)(unsafe.Pointer(uintptr(unsafe.Pointer(p)) + 1)) {
+		res = append(res, *p)
+	}
+	return string(res)
+}
+
+// GetGPUDeviceName returns the detected GPU hardware model string (e.g. "NVIDIA GeForce RTX 3050 Ti")
+func GetGPUDeviceName() string {
+	gpuMu.Lock()
+	defer gpuMu.Unlock()
+	if gpuRendererStr != "" {
+		return gpuRendererStr
+	}
+	return "Dedicated GPU Compute"
+}
+
+// GetGPUVendorName returns the detected GPU vendor name (e.g. "NVIDIA Corporation")
+func GetGPUVendorName() string {
+	gpuMu.Lock()
+	defer gpuMu.Unlock()
+	return gpuVendorStr
+}
+
+// GetGPUDispatchTimeMs returns the execution time in ms of the last compute shader dispatch
+func GetGPUDispatchTimeMs() float32 {
+	gpuMu.Lock()
+	defer gpuMu.Unlock()
+	return gpuDispatchTimeMs
 }
 
 // IsGPUComputeAvailable returns true if the GPU compute pipeline is ready for dispatch
@@ -334,6 +406,7 @@ func CalculateAccelerationsGPU(bodies []*Body, g float64, softening float64) ([]
 	fnGlUniform1f(locG, float32(g))
 	fnGlUniform1f(locSofteningSq, float32(softening*softening))
 
+	startTime := rl.GetTime()
 	numGroups := uint32((n + 255) / 256)
 	fnGlDispatchCompute(numGroups, 1, 1)
 	fnGlMemoryBarrier(glShaderStorageBarrierBit)
@@ -343,20 +416,25 @@ func CalculateAccelerationsGPU(bodies []*Body, g float64, softening float64) ([]
 	fnGlGetBufferSubData(glShaderStorageBuffer, 0, n*accByteSize, unsafe.Pointer(&gpuAccsCache[0]))
 	fnGlUseProgram(0)
 
-	result := make([]rl.Vector3, n)
+	gpuDispatchTimeMs = float32((rl.GetTime() - startTime) * 1000.0)
+	gpuLastDispatched = n
+
+	if len(gpuResultsCache) < n {
+		gpuResultsCache = make([]rl.Vector3, n)
+	}
 	for i := 0; i < n; i++ {
 		b := bodies[i]
 		if b.IsStationary {
-			result[i] = rl.NewVector3(0, 0, 0)
+			gpuResultsCache[i] = rl.NewVector3(0, 0, 0)
 			b.NetForce = rl.NewVector3(0, 0, 0)
 		} else {
 			a := gpuAccsCache[i]
-			result[i] = rl.NewVector3(a.AccX, a.AccY, a.AccZ)
+			gpuResultsCache[i] = rl.NewVector3(a.AccX, a.AccY, a.AccZ)
 			b.NetForce = rl.NewVector3(a.AccX*float32(b.Mass), a.AccY*float32(b.Mass), a.AccZ*float32(b.Mass))
 		}
 	}
 
-	return result, true
+	return gpuResultsCache[:n], true
 }
 
 // CleanupGPUCompute frees all GPU buffers and shader programs
@@ -386,4 +464,55 @@ func CleanupGPUCompute() {
 	}
 	gpuAvailable = false
 	gpuInitialized = false
+}
+
+// VerifyGPUComputeDirect tests the active GPU compute shader pipeline against CPU reference calculations
+func VerifyGPUComputeDirect() {
+	fmt.Printf("\n=======================================================\n")
+	fmt.Printf("🪐 [GravitySim] GPU Compute Engine Verification\n")
+	fmt.Printf("=======================================================\n")
+	fmt.Printf("GPU Device:   %s\n", GetGPUDeviceName())
+	fmt.Printf("GPU Vendor:   %s\n", GetGPUVendorName())
+	fmt.Printf("GPU Available: %v\n", IsGPUComputeAvailable())
+
+	if !IsGPUComputeAvailable() {
+		fmt.Printf("❌ GPU Compute is not active on this device.\n\n")
+		return
+	}
+
+	b1 := &Body{ID: 1, Mass: 1000.0, Position: rl.NewVector3(0, 0, 0)}
+	b2 := &Body{ID: 2, Mass: 50.0, Position: rl.NewVector3(10, 0, 0)}
+	b3 := &Body{ID: 3, Mass: 20.0, Position: rl.NewVector3(0, 15, 0)}
+	bodies := []*Body{b1, b2, b3}
+
+	cpuAccs := CalculateAccelerations(bodies, 1.0, 0.5)
+	gpuAccs, success := CalculateAccelerationsGPU(bodies, 1.0, 0.5)
+
+	if !success {
+		fmt.Printf("❌ CalculateAccelerationsGPU failed execution!\n\n")
+		return
+	}
+
+	fmt.Printf("GPU Kernel Dispatch Time: %.3f ms\n", GetGPUDispatchTimeMs())
+	pass := true
+	for i := range bodies {
+		diffX := math.Abs(float64(gpuAccs[i].X - cpuAccs[i].X))
+		diffY := math.Abs(float64(gpuAccs[i].Y - cpuAccs[i].Y))
+		diffZ := math.Abs(float64(gpuAccs[i].Z - cpuAccs[i].Z))
+		fmt.Printf("Body %d: CPU=(%+0.4f, %+0.4f, %+0.4f)  GPU=(%+0.4f, %+0.4f, %+0.4f)  Δ=(%.5f, %.5f, %.5f)\n",
+			i, cpuAccs[i].X, cpuAccs[i].Y, cpuAccs[i].Z,
+			gpuAccs[i].X, gpuAccs[i].Y, gpuAccs[i].Z,
+			diffX, diffY, diffZ)
+		if diffX > 0.01 || diffY > 0.01 || diffZ > 0.01 {
+			pass = false
+		}
+	}
+
+	if pass {
+		fmt.Printf("\n✅ VERIFICATION PASSED: NVIDIA GPU Compute Shader matches analytical gravity calculation within tolerance!\n")
+		fmt.Printf("Hardware compute path is 100%% ACTIVE and performing real-time O(N^2) gravity integration.\n")
+	} else {
+		fmt.Printf("\n❌ VERIFICATION FAILED: Numerical deviation exceeded threshold.\n")
+	}
+	fmt.Printf("=======================================================\n\n")
 }

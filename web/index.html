@@ -78,6 +78,7 @@
         </div>
 
         <div class="actions">
+            <button id="btn-2d-offload-top" class="btn" title="Offload 3D Rendering to run purely in 2D (Hotkey: Z / F5)">⚡ 2D OFFLOAD</button>
             <button id="btn-lock-near" class="btn" title="Lock to Nearest Object (N)">🎯 LOCK NEAR</button>
             <button id="btn-reset-cam" class="btn" title="Reset Camera View (R)">🎥 RESET CAM</button>
             <button id="btn-help" class="btn" title="Help & Hotkeys">❓</button>
@@ -89,11 +90,13 @@
 
     <!-- HUD Telemetry Overlay -->
     <div id="hud-overlay">
+        <button id="btn-close-hud" class="btn-hud-close" title="Hide HUD (Press I or F11 to restore)">&times;</button>
         <div class="hud-item"><span class="hud-label">FPS:</span> <span id="hud-fps" class="hud-val green">144</span></div>
         <div class="hud-item"><span class="hud-label">BODIES:</span> <span id="hud-bodies" class="hud-val cyan">10</span></div>
         <div class="hud-item"><span class="hud-label">PHYSICS:</span> <span id="hud-phys-time" class="hud-val">0.4 ms</span></div>
         <div class="hud-item"><span class="hud-label">ENGINE:</span> <span id="hud-engine" class="hud-val purple">Barnes-Hut O(N log N)</span></div>
         <div class="hud-item"><span class="hud-label">MERGES:</span> <span id="hud-merges" class="hud-val">0</span></div>
+        <div class="hud-item hud-gw hidden" id="hud-gw-item"><span class="hud-label">GW STRAIN:</span> <span id="hud-gw-val" class="hud-val purple">0.0e+00</span></div>
     </div>
 
     <!-- Right Inspector Panel -->
@@ -154,14 +157,29 @@
             <span class="group-label">Visualizers:</span>
             <button id="tog-trails" class="btn toggle active">Trails</button>
             <button id="tog-grid" class="btn toggle active">Grid</button>
-            <button id="tog-spacetime" class="btn toggle">Spacetime 3D</button>
+            <button id="tog-spacetime" class="btn toggle" title="Toggle 3D Spacetime Curvature Grid (Hotkey: P)">Spacetime 3D</button>
+            <button id="tog-gwwaves" class="btn toggle" title="Toggle Gravitational Waves & LIGO Detector (Hotkey: J)">GW Waves</button>
+            <button id="tog-vectors" class="btn toggle" title="Toggle Object Velocity & Direction Vectors (Hotkey: V)">Vectors</button>
             <button id="tog-vecfield" class="btn toggle">Vector Field</button>
             <button id="tog-glow" class="btn toggle">Velocity Glow</button>
             <button id="tog-2dmap" class="btn toggle" title="Toggle 2D Tactical Viewport (M)">2D Map</button>
+            <button id="tog-2doffload" class="btn toggle" title="Toggle 2D Offload Mode (3D Render Stopped) (Hotkey: Z / F5)">2D Offload</button>
             <button id="tog-2dlabels" class="btn toggle active" title="Toggle 2D Map Celestial Labels (K)">2D Labels</button>
+            <button id="tog-2dicons" class="btn toggle" title="Toggle 2D Object Icons / Clear Circles (Hotkey: Y)">2D Icons</button>
+            <button id="tog-2dcircles" class="btn toggle active" title="Toggle 2D Map Body Circles & Dots (Shift+C)">2D Circles</button>
             <button id="tog-heatmap" class="btn toggle" title="Toggle 2D Gravitational Heatmap (H)">Heatmap</button>
             <button id="tog-3dheatmap" class="btn toggle" title="Toggle 3D Heatmap Plane Grid">3D Heatmap</button>
             <button id="tog-lagrange" class="btn toggle active" title="Toggle 3D & 2D Lagrange Points (L1-L5)">Lagrange</button>
+        </div>
+
+        <div class="toolbar-group">
+            <span class="group-label">Resolution:</span>
+            <button id="btn-res-dec" class="btn" title="Decrease Spacetime Grid Resolution (Hotkey: { or [)">3D RES -</button>
+            <span id="lbl-resolution" style="color: var(--accent-cyan); font-size: 11px; font-weight: bold; min-width: 48px; text-align: center; display: inline-block;">120x120</span>
+            <button id="btn-res-inc" class="btn" title="Increase Spacetime Grid Resolution (Hotkey: } or ])">3D RES +</button>
+            <button id="btn-hres-dec" class="btn" title="Decrease 2D Heatmap Resolution (Hotkey: Alt+{ or Alt+H)">2D HEAT -</button>
+            <span id="lbl-heatmap-res" style="color: #ff9d42; font-size: 11px; font-weight: bold; min-width: 44px; text-align: center; display: inline-block;">64x49</span>
+            <button id="btn-hres-inc" class="btn" title="Increase 2D Heatmap Resolution (Hotkey: Alt+} or Shift+H)">2D HEAT +</button>
         </div>
 
         <div class="toolbar-group">
@@ -211,18 +229,28 @@
                     <li><kbd>1 - 9, 0</kbd>: Instant preset selector</li>
                     <li><kbd>B</kbd>: Toggle Barnes-Hut Octree ($O(N \log N)$ vs Direct $O(N^2)$)</li>
                     <li><kbd>P</kbd>: Toggle 3D Spacetime Curvature Potential Grid</li>
+                    <li><kbd>J</kbd>: Toggle Gravitational Waves & LIGO Strain Detector</li>
                     <li><kbd>O</kbd>: Toggle Gravitational 3D Vector Field (32x32 needles)</li>
                     <li><kbd>[</kbd> / <kbd>]</kbd>: Decrease / Increase Spacetime Grid Scale (0.5x - 3.5x)</li>
                     <li><kbd>L</kbd>: Toggle Particle Velocity Glow Mode</li>
                     <li><kbd>G</kbd>: Toggle 1PN General Relativity Precession</li>
                     <li><kbd>M</kbd>: Toggle 2D Tactical Viewport</li>
+                    <li><kbd>Z</kbd> / <kbd>F5</kbd>: Toggle 2D Offload Mode (3D Render Stopped)</li>
+                    <li><kbd>F</kbd>: Focus 2D View on Selected Object</li>
+                    <li><kbd>T</kbd>: Continuously Track Selected Object in 2D</li>
+                    <li><kbd>K</kbd>: Toggle 2D Map Celestial Labels</li>
+                    <li><kbd>Y</kbd>: Toggle 2D Object Icons / Clear Circles</li>
                     <li><kbd>H</kbd>: Toggle Continuous Gravitational Heatmap in 2D</li>
+                    <li><kbd>Shift+H</kbd> / <kbd>Alt+H</kbd> <i>(or Alt+{ / Alt+})</i>: Increase / Decrease 2D Heatmap Resolution (16 to 200 cols)</li>
+                    <li><kbd>{</kbd> / <kbd>}</kbd>: Decrease / Increase Spacetime Grid Resolution (32 to 512)</li>
+                    <li><kbd>U</kbd>: Toggle 3D & 2D Lagrange Equilibrium Points (L1-L5)</li>
+                    <li><kbd>X</kbd>: Deploy Scientific Probe to L4 Trojan Point</li>
                     <li><kbd>R</kbd>: Reset Camera viewpoint</li>
                     <li><kbd>N</kbd>: Lock Camera to Nearest Object</li>
                 </ul>
 
                 <h4>Mathematical Engine</h4>
-                <p>This WebAssembly build runs the exact same high-precision Symplectic Velocity Verlet integrator, Barnes-Hut octree ($O(N \log N)$), 1PN General Relativity precession, and Roche tidal fragmentation algorithms compiled from Go directly into native WebAssembly.</p>
+                <p>This WebAssembly build runs the exact same high-precision Symplectic Velocity Verlet integrator, Barnes-Hut octree ($O(N \log N)$), 1PN General Relativity precession, Lagrange equilibrium points (L1-L5), and Roche tidal fragmentation algorithms compiled from Go directly into native WebAssembly.</p>
             </div>
         </div>
     </div>
@@ -230,10 +258,23 @@
     <!-- 2D Tactical Viewport & Gravitational Heatmap Overlay -->
     <div id="viewport-2d-container" class="hidden">
         <div class="viewport-2d-header">
-            <span class="viewport-2d-title">🛰️ 2D TACTICAL ORBITAL MAP</span>
+            <span class="viewport-2d-title" id="viewport-2d-title">🛰️ 2D TACTICAL ORBITAL MAP</span>
             <div class="viewport-2d-actions">
                 <span id="viewport-2d-scale">Zoom: 1.0x</span>
+                <button id="btn-2d-offload" class="btn-mini" title="Offload 3D rendering to run purely in 2D (Z/F5)">3D Offload</button>
+                <button id="btn-2d-focus" class="btn-mini" title="Focus 2D View on Selected Object (F)">Focus</button>
+                <button id="btn-2d-track" class="btn-mini" title="Continuously Track Selected Object (T)">Track</button>
+                <button id="btn-2d-spawn" class="btn-mini" title="Click & Drag to Spawn Objects in 2D (+Spawn)">+Spawn</button>
+                <button id="btn-2d-trl" class="btn-mini active" title="Toggle Orbit Reference Trails in 2D">TRL</button>
+                <button id="btn-2d-cir" class="btn-mini active" title="Toggle Body Overlay Circles & Dots in 2D">CIR</button>
+                <button id="btn-2d-gw" class="btn-mini active" title="Toggle Gravitational Waves in 2D (J)">GW</button>
                 <button id="btn-2d-labels" class="btn-mini active" title="Toggle 2D Labels (K)">LBL</button>
+                <button id="btn-2d-icons" class="btn-mini" title="Toggle Object Icons / Clear Circles (Hotkey: Y)">ICON</button>
+                <button id="btn-2d-vec" class="btn-mini" title="Toggle Object Direction Vectors (Hotkey: V)">VEC</button>
+                <button id="btn-2d-res-dec" class="btn-mini" title="Decrease Resolution (2D Heatmap when active, Spacetime Grid with Shift)">RES-</button>
+                <button id="btn-2d-res-inc" class="btn-mini" title="Increase Resolution (2D Heatmap when active, Spacetime Grid with Shift)">RES+</button>
+                <button id="btn-2d-hud" class="btn-mini active" title="Toggle Telemetry HUD Overlay (Hotkey: I/F11)">HUD</button>
+                <button id="btn-2d-probe" class="btn-mini" title="Deploy Satellite Probe to L4 (Hotkey: X)">+Probe</button>
                 <button id="btn-2d-reset" class="btn-mini" title="Reset Viewport Pan/Zoom">Reset</button>
                 <button id="btn-2d-fullscreen" class="btn-mini" title="Toggle Fullscreen">⛶</button>
                 <button id="btn-close-2d" class="btn-mini" title="Close 2D Map">&times;</button>

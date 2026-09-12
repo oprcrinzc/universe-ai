@@ -212,6 +212,41 @@ select:hover {
     gap: 6px;
     z-index: 10;
     pointer-events: none;
+    transition: top 0.2s ease, bottom 0.2s ease, left 0.2s ease, opacity 0.2s ease;
+}
+
+#hud-overlay.hidden {
+    display: none !important;
+}
+
+/* Relocate HUD to bottom-left when 2D offload mode or fullscreen is active so it NEVER blocks top 2D buttons! */
+body.offload-active #hud-overlay,
+body.viewport-2d-fullscreen #hud-overlay,
+#viewport-2d-container.offload-mode ~ #hud-overlay,
+#viewport-2d-container.fullscreen ~ #hud-overlay {
+    top: auto;
+    bottom: 58px;
+    left: 16px;
+}
+
+.btn-hud-close {
+    position: absolute;
+    top: 4px;
+    right: 6px;
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 14px;
+    line-height: 1;
+    cursor: pointer;
+    pointer-events: auto;
+    padding: 2px 5px;
+    border-radius: 3px;
+}
+
+.btn-hud-close:hover {
+    color: #ff5555;
+    background: rgba(255, 60, 60, 0.2);
 }
 
 .hud-item {
@@ -241,7 +276,7 @@ select:hover {
     backdrop-filter: blur(14px);
     border: 1px solid var(--panel-border);
     border-radius: 8px;
-    z-index: 10;
+    z-index: 100;
     display: flex;
     flex-direction: column;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
@@ -503,6 +538,16 @@ kbd {
     z-index: 100;
 }
 
+#viewport-2d-container.offload-mode {
+    top: 50px;
+    left: 0;
+    right: 0;
+    bottom: 48px;
+    border-radius: 0;
+    border: none;
+    z-index: 5;
+}
+
 #viewport-2d-container.hidden {
     display: none;
 }
@@ -526,7 +571,8 @@ kbd {
 .viewport-2d-actions {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 4px;
+    flex-wrap: wrap;
 }
 
 #viewport-2d-scale {
@@ -557,7 +603,7 @@ kbd {
 }
 
 /* Prevent UI overlap: shift 2D map smoothly left of inspector panel when active */
-body.inspector-active #viewport-2d-container:not(.fullscreen) {
+body.inspector-active #viewport-2d-container:not(.fullscreen):not(.offload-mode) {
     right: 348px;
 }
 

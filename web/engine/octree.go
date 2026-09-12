@@ -1,3 +1,5 @@
+//go:build js && wasm
+
 package main
 
 import "math"
@@ -55,21 +57,39 @@ func NewOctree(bodies []*Body) *Octree {
 	minB := bodies[0].Position
 	maxB := bodies[0].Position
 	for _, b := range bodies[1:] {
-		if b.Position.X < minB.X { minB.X = b.Position.X }
-		if b.Position.Y < minB.Y { minB.Y = b.Position.Y }
-		if b.Position.Z < minB.Z { minB.Z = b.Position.Z }
-		if b.Position.X > maxB.X { maxB.X = b.Position.X }
-		if b.Position.Y > maxB.Y { maxB.Y = b.Position.Y }
-		if b.Position.Z > maxB.Z { maxB.Z = b.Position.Z }
+		if b.Position.X < minB.X {
+			minB.X = b.Position.X
+		}
+		if b.Position.Y < minB.Y {
+			minB.Y = b.Position.Y
+		}
+		if b.Position.Z < minB.Z {
+			minB.Z = b.Position.Z
+		}
+		if b.Position.X > maxB.X {
+			maxB.X = b.Position.X
+		}
+		if b.Position.Y > maxB.Y {
+			maxB.Y = b.Position.Y
+		}
+		if b.Position.Z > maxB.Z {
+			maxB.Z = b.Position.Z
+		}
 	}
 
 	sizeX := maxB.X - minB.X
 	sizeY := maxB.Y - minB.Y
 	sizeZ := maxB.Z - minB.Z
 	maxDim := sizeX
-	if sizeY > maxDim { maxDim = sizeY }
-	if sizeZ > maxDim { maxDim = sizeZ }
-	if maxDim < 10.0 { maxDim = 10.0 }
+	if sizeY > maxDim {
+		maxDim = sizeY
+	}
+	if sizeZ > maxDim {
+		maxDim = sizeZ
+	}
+	if maxDim < 10.0 {
+		maxDim = 10.0
+	}
 	maxDim *= 1.1
 
 	center := Vector3Scale(Vector3Add(minB, maxB), 0.5)
@@ -140,9 +160,15 @@ func (t *Octree) subdivide(node *OctreeNode) {
 	qW := node.HalfWidth * 0.5
 	for i := 0; i < 8; i++ {
 		ox, oy, oz := -qW, -qW, -qW
-		if (i & 1) != 0 { ox = qW }
-		if (i & 2) != 0 { oy = qW }
-		if (i & 4) != 0 { oz = qW }
+		if (i & 1) != 0 {
+			ox = qW
+		}
+		if (i & 2) != 0 {
+			oy = qW
+		}
+		if (i & 4) != 0 {
+			oz = qW
+		}
 
 		childCenter := Vector3{X: node.Center.X + ox, Y: node.Center.Y + oy, Z: node.Center.Z + oz}
 		child := t.Pool.Alloc()
@@ -156,9 +182,15 @@ func (t *Octree) subdivide(node *OctreeNode) {
 
 func (t *Octree) getOctant(node *OctreeNode, pos Vector3) int {
 	oct := 0
-	if pos.X >= node.Center.X { oct |= 1 }
-	if pos.Y >= node.Center.Y { oct |= 2 }
-	if pos.Z >= node.Center.Z { oct |= 4 }
+	if pos.X >= node.Center.X {
+		oct |= 1
+	}
+	if pos.Y >= node.Center.Y {
+		oct |= 2
+	}
+	if pos.Z >= node.Center.Z {
+		oct |= 4
+	}
 	return oct
 }
 
